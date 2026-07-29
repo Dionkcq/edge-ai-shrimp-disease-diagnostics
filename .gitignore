@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Large data and model artifacts
+datasets/raw/
+datasets/processed/
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.tflite
+models/*.engine
+runs/
+artifacts/
+
+# Generated documentation previews
+docs/implementation-plan.html
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

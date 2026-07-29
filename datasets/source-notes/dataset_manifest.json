@@ -1,0 +1,56 @@
+{
+  "generated_on": "2026-07-29",
+  "project": "Edge AI for Sustainable Shrimp Disease Diagnostics",
+  "datasets": [
+    {
+      "name": "ShrimpDiseaseImageBD",
+      "version": 3,
+      "doi": "10.17632/jhrtdj9txm.3",
+      "official_url": "https://data.mendeley.com/datasets/jhrtdj9txm/3",
+      "download_url": "https://data.mendeley.com/public-api/zip/jhrtdj9txm/download/3",
+      "local_filename": "ShrimpDiseaseImageBD_v3.zip",
+      "sha256": "7f1e00b820e5e0bc35e73ee9cdd389c23b5ec7dabcf13d3d33ac0319b03ad244",
+      "license": "CC BY 4.0",
+      "verified_archive": true,
+      "raw_image_count": 1149,
+      "annotated_image_count": 746,
+      "classes": {
+        "Healthy": 403,
+        "Black Gill": 198,
+        "WSSV": 328,
+        "Black Gill + WSSV": 220
+      },
+      "notes": [
+        "The outer archive contains nested Raw Images and Annotated Diseased Shrimp Images ZIP files.",
+        "The annotated set provides one YOLO text label file per diseased image.",
+        "Ignore __MACOSX and .DS_Store metadata during extraction.",
+        "The paper reports 416 individual shrimp, so specimen-aware splitting is required if IDs can be recovered."
+      ]
+    },
+    {
+      "name": "TigerShrimpBD",
+      "version": 1,
+      "doi": "10.17632/9dj4sk5d55.1",
+      "official_url": "https://data.mendeley.com/datasets/9dj4sk5d55/1",
+      "download_url": "https://data.mendeley.com/public-api/zip/9dj4sk5d55/download/1",
+      "local_filename": "TigerShrimpBD_v1.zip",
+      "sha256": "026c818df35643cae7821cff74f5fa3dc4ea0e238e9036dcc6ac78b66ed3480b",
+      "license": "CC BY 4.0",
+      "verified_archive": true,
+      "original_image_count": 1001,
+      "augmented_image_count": 3574,
+      "original_class_counts": {
+        "Healthy": 423,
+        "Black Gill": 39,
+        "WSSV": 489,
+        "Yellow Head": 50
+      },
+      "notes": [
+        "Use the Original directory as source data.",
+        "Do not randomly split the provided Augmented directory; augmented variants can leak source-image information across splits.",
+        "Use primarily as a secondary dataset/generalization test because it targets tiger shrimp and has severe original-class imbalance."
+      ]
+    }
+  ],
+  "scope_warning": "Neither downloadable field-image dataset provides an EMS/AHPND class. A published 1357-image AHPND/EHP/HPV/Normal dataset uses 100x histopathology images and is not publicly available because of institutional restrictions. Do not claim EMS/AHPND detection in the initial system."
+}
