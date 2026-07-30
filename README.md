@@ -46,7 +46,7 @@ The frontend and API share one origin. Runtime assets, policies, guidance and mo
 | Deterministic, fail-closed dataset preparation | Implemented and tested |
 | Responsive React interface | Implemented and tested on desktop/mobile Chromium |
 | Same-origin production serving | Implemented and integration-tested |
-| LikeC4 architecture site | Implemented and locally runnable; current private-repository plan blocks Pages |
+| LikeC4 architecture site | Deployed and verified on GitHub Pages |
 | Training pipeline | Not implemented |
 | Trained or validated model weights | Not included |
 | Accuracy, calibration, latency and parity measurements | Not available |
@@ -135,7 +135,7 @@ npm run build
 npm run check:site
 ```
 
-GitHub Pages would publish only `architecture/dist`, not the screening application, raw data, acceptance records or model artifacts. The current GitHub plan does not support Pages for this private repository, so there is no public LikeC4 URL. Run `npm run dev -- --listen 127.0.0.1 --port 5173` from `architecture/` and open <http://127.0.0.1:5173>. The checked-in workflow becomes usable if the repository plan/settings later support GitHub Actions Pages.
+GitHub Pages publishes only the validated `architecture/dist` artifact—not the screening application, raw data, acceptance records or model artifacts. Open the verified site at <https://dionkcq.github.io/edge-ai-shrimp-disease-diagnostics/>. For local development, run `npm run dev -- --listen 127.0.0.1 --port 5173` from `architecture/` and open <http://127.0.0.1:5173>.
 
 ## Team
 

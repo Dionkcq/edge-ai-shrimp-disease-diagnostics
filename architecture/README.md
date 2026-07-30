@@ -46,4 +46,6 @@ shared diagram links do not require server-side rewrites.
 
 ## Publication boundary
 
-The current GitHub plan rejects Pages for this private repository, so no public URL exists. The reusable deployment is manual via `.github/workflows/architecture-pages.yml`; it validates and scans output before deployment and becomes usable only if the repository plan/settings later permit GitHub Actions Pages.
+The public architecture site is deployed through the manually dispatched `.github/workflows/architecture-pages.yml` workflow. The workflow validates and scans output before deployment:
+
+<https://dionkcq.github.io/edge-ai-shrimp-disease-diagnostics/>
