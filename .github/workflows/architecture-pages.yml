@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  EXPECTED_PAGES_BASE: /edge-ai-shrimp-disease-diagnostics/
+  EXPECTED_PAGES_BASE: /edge-ai-shrimp-disease-diagnostics
 
 jobs:
   build-pages:
