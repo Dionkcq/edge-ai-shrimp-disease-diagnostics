@@ -17,11 +17,12 @@ explanation.
 | `backend/` | MIT | The served runtime. Must never resolve or import an AGPL distribution. |
 | `contracts/`, `policy/`, `guidance/`, `docs/`, `scripts/` | MIT | Text, JSON and tooling with no AGPL dependency. |
 | `pipeline/` | **AGPL-3.0-or-later** | Development-time data and training tooling. Never imported by `backend/`. |
+| `training/` | **AGPL-3.0-or-later** | Separately locked Python 3.11 Ultralytics training/export tooling. Excluded from the runtime workspace. |
 | `datasets/` (contents) | see `datasets/DATASET_REGISTRY.md` | Source archives are third-party CC BY 4.0. Not redistributed here. |
 | Model weights (`models/*.onnx`, `*.pt`) | **AGPL-3.0-or-later if produced by Ultralytics** | None exist in this repository. See below. |
 
 The root `LICENSE` (MIT) is scoped to the MIT trees above. `pipeline/LICENSE.AGPL`
-carries the AGPL text for that tree.
+and `training/LICENSE.AGPL` carry the AGPL text for those trees.
 
 ---
 
@@ -42,13 +43,12 @@ work. The mitigation is separation, not a claim that the problem does not exist:
 - `backend/` declares no dependency on it and cannot import it;
 - the boundary is asserted by a test and by a CI check, not by a convention.
 
-**Ultralytics is not declared as a dependency anywhere in the lockfile.** This is
-deliberate and slightly inconvenient. Declaring it — even under an optional extra
-in `pipeline/` — would resolve an AGPL distribution into the same `uv.lock` that
-resolves the MIT runtime, which is exactly the coupling the boundary exists to
-prevent. No training implementation or install path exists yet;
-`shrimp-pipeline train` therefore reports `UNAVAILABLE` rather than implying that
-the separately licensed toolchain is ready.
+**Ultralytics is not declared anywhere in the runtime workspace lockfile.** The
+root `uv.lock` remains free of Ultralytics, Torch and OpenCV. The excluded
+`training/` project has its own Python 3.11 `pyproject.toml`, `uv.lock`, AGPL text,
+CLI and tests. `shrimp-pipeline train` remains `UNAVAILABLE` so nobody accidentally
+installs training dependencies through the runtime workspace; the reviewed entry
+point is the separately installed `shrimp-train` command.
 
 ---
 

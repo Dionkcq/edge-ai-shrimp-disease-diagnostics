@@ -4,9 +4,9 @@
 # `backend/tests/security/test_dependency_boundary.py` asserts the boundary.
 #
 # The training toolchain (ultralytics, torch) is deliberately NOT declared here.
-# Declaring it would pull an AGPL distribution into the single workspace lockfile
-# that also resolves the MIT runtime. It is intentionally unavailable until a
-# separately licensed training implementation and install path are reviewed. `shrimp-pipeline train` reports UNAVAILABLE rather than pretending.
+# It lives in the separately locked Python 3.11 `training/` project. Declaring it
+# here would pull AGPL tooling into the workspace lockfile that resolves the MIT
+# runtime. `shrimp-pipeline train` remains unavailable by design; use `shrimp-train`.
 [project]
 name = "shrimp-pipeline"
 version = "0.1.0"

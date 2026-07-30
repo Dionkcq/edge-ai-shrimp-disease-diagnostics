@@ -1,0 +1,39 @@
+[project]
+name = "shrimp-training"
+version = "0.1.0"
+description = "Isolated AGPL training and ONNX export tooling for shrimp marker screening"
+requires-python = ">=3.11,<3.12"
+license = "AGPL-3.0-or-later"
+dependencies = [
+    "numpy==2.2.6",
+    "onnx==1.22.0",
+    "onnxruntime==1.28.0",
+    "torch==2.5.1",
+    "torchvision==0.20.1",
+    "ultralytics==8.4.112",
+]
+
+[project.scripts]
+shrimp-train = "shrimp_training.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shrimp_training"]
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu118" }
+torchvision = { index = "pytorch-cu118" }
+
+[dependency-groups]
+test = [
+    "pytest>=8.4,<10",
+    "ruff>=0.14,<0.17",
+]

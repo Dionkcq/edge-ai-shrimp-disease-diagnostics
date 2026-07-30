@@ -29,6 +29,7 @@ architecture/build/
 *.pem
 
 # Large data and model artifacts
+private/
 datasets/raw/
 datasets/processed/
 datasets/mapping_acceptance.json
@@ -39,6 +40,9 @@ models/*.tflite
 models/*.engine
 runs/
 artifacts/
+training/runs/
+training/returns/
+training/work/
 
 # Generated documentation previews
 docs/implementation-plan.html
