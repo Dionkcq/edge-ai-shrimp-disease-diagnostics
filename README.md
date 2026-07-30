@@ -52,7 +52,7 @@ The frontend and API share one origin. Runtime assets, policies, guidance and mo
 | Accuracy, calibration, latency and parity measurements | Not available |
 | Guidance review | Literature-reviewed; not expert-reviewed |
 
-See [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md) and [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) before interpreting any result.
+See [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md) and [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) before interpreting any result. For moving the project to the stronger training laptop, follow [`HANDOFF.md`](HANDOFF.md); it clearly separates steps available now from the not-yet-implemented trainer.
 
 ## Repository layout
 
