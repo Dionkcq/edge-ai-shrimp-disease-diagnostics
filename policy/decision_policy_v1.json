@@ -1,0 +1,20 @@
+{
+  "policy_id": "decision_policy_v1",
+  "status": "UNCALIBRATED",
+  "status_note": "No trained model exists, so none of these thresholds has ever been fitted to data. They are conservative starting points, not measured operating points.",
+  "candidate_detection_score": 0.15,
+  "candidate_note": "The decode/NMS score floor, deliberately BELOW minimum_detection_score. A detection between the two bars is something the model saw but cannot report: it reaches the decision policy and becomes UNABLE_TO_ASSESS / LOW_CONFIDENCE. If this floor were equal to minimum_detection_score, the low-confidence abstention branch would be unreachable and the system would silently answer NO_TARGET_MARKER_DETECTED for a weak sighting.",
+  "minimum_detection_score": 0.35,
+  "minimum_detection_note": "The reporting bar. At or above this, a recognised class becomes a visible marker in the response.",
+  "moderate_score": 0.55,
+  "high_score": 0.8,
+  "iou_threshold": 0.45,
+  "iou_note": "Ultralytics uses 0.7 in validation and 0.45 on the prediction path. One value is pinned here so a result is reproducible; this is the prediction-path value.",
+  "max_detections": 300,
+  "multi_label": false,
+  "multi_label_note": "Ultralytics enables multi_label during validation, which lets one box emit one detection per class. That would corrupt the two-marker decision logic, so it stays off.",
+  "class_roles": {
+    "dark_gill": "GILL_DARKENING",
+    "white_spot": "WHITE_SPOT"
+  }
+}

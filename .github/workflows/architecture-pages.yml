@@ -1,0 +1,81 @@
+name: Publish architecture documentation to GitHub Pages
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: architecture-pages
+  cancel-in-progress: false
+
+env:
+  EXPECTED_PAGES_BASE: /edge-ai-shrimp-disease-diagnostics/
+
+jobs:
+  build-pages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: architecture/package-lock.json
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@1f0c5cde4bc74cd7e1254d0cb4de8d49e9068c7d # v4
+
+      - name: Verify repository Pages base path
+        env:
+          CONFIGURED_BASE: ${{ steps.pages.outputs.base_path }}
+        run: test "$CONFIGURED_BASE" = "$EXPECTED_PAGES_BASE"
+
+      - name: Install locked architecture dependencies
+        working-directory: architecture
+        run: npm ci
+
+      - name: Validate and check LikeC4 sources
+        working-directory: architecture
+        run: |
+          npm run format:check
+          npm run validate
+
+      - name: Build static LikeC4 site
+        working-directory: architecture
+        env:
+          PAGES_BASE: ${{ steps.pages.outputs.base_path }}
+        run: |
+          npm run clean
+          npx likec4 build . \
+            --base "$PAGES_BASE" \
+            --use-hash-history \
+            --title "Shrimp Screening Architecture" \
+            --output dist
+
+      - name: Check links, offline boundary, and publishable content
+        working-directory: architecture
+        run: npm run check:site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: architecture/dist
+
+  deploy-pages:
+    needs: build-pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

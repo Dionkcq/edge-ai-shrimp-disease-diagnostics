@@ -1,0 +1,11 @@
+{
+  "policy_id": "quality_policy_v1",
+  "status": "UNCALIBRATED",
+  "status_note": "Chosen from first principles, not fitted to field photographs. Every threshold here is a candidate for revision once real capture data exists.",
+  "minimum_side_px": 640,
+  "minimum_side_note": "Below the model input size, upscaling would invent detail the camera never captured. The median white-spot target is already only about eleven pixels at 640.",
+  "minimum_blur_score": 18.0,
+  "minimum_mean_luminance": 25.0,
+  "maximum_mean_luminance": 235.0,
+  "minimum_rms_contrast": 12.0
+}

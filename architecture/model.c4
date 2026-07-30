@@ -1,0 +1,193 @@
+model {
+  operator = person 'Farm operator' {
+    description '''
+Uses a phone camera to submit one shrimp photograph and review an appearance-based
+screening result. The result is decision support, not a diagnosis.
+'''
+  }
+
+  healthProfessional = person 'Aquatic-animal health professional' {
+    description 'Interprets field context and advises on confirmation and response.'
+  }
+
+  laboratory = externalSystem 'Qualified laboratory' {
+    description 'Performs molecular or histological confirmation outside this system.'
+  }
+
+  screeningSystem = system 'Offline shrimp visible-marker screening' {
+    #offline #safety-critical
+    summary 'Local, appearance-based screening that abstains when it cannot assess safely.'
+    description '''
+Screens one photograph for two visible appearances: white-spot-like regions and
+dark-gill-like regions. It does not identify a pathogen or determine animal health.
+
+A clean checkout has no trained model installed. In that state the service is not
+ready and every screening declines with `UNABLE_TO_ASSESS / MODEL_UNAVAILABLE`.
+'''
+
+    webUi = browser 'Operator web interface' {
+      #offline
+      technology 'React static assets in a phone or laptop browser'
+      summary 'Capture, quality feedback, marker overlays, notices and limitations.'
+      description '''
+Never converts `NO_TARGET_MARKER_DETECTED` into a reassuring health claim. Model
+availability, demonstration status, provisional mapping and uncalibrated thresholds
+remain visible product facts.
+'''
+    }
+
+    api = container 'Screening API' {
+      #offline #safety-critical
+      technology 'FastAPI + Python 3.13'
+      summary 'Single-origin API for bounded image intake and deterministic policy.'
+
+      requestBoundary = safetyControl 'Request boundary' {
+        #untrusted #safety-critical
+        summary '12 MB streaming cap, one image part, stable problem responses.'
+      }
+
+      imageIntake = component 'Image intake' {
+        #ephemeral #safety-critical
+        technology 'Pillow + NumPy'
+        summary 'Magic-byte check, bounded dimensions, decode and EXIF transpose.'
+        description 'Encoded bytes and pixels remain in memory and are discarded after the request. Filenames and EXIF/GPS are not logged.'
+      }
+
+      qualityGate = safetyControl 'Image quality gate' {
+        #safety-critical #uncalibrated
+        technology 'Deterministic NumPy metrics + JSON policy'
+        summary 'Rejects undersized, blurred, dark, bright or low-contrast images.'
+      }
+
+      provider = component 'Detector provider' {
+        #unavailable-by-default
+        technology 'unavailable | fixture | ONNX Runtime'
+        summary 'One protocol; no installed model on a clean checkout.'
+      }
+
+      postprocess = component 'Decode and postprocess' {
+        technology 'NumPy'
+        summary 'Letterbox inverse, class-aware NMS and normalized original-frame boxes.'
+      }
+
+      decisionPolicy = safetyControl 'Decision and abstention policy' {
+        #safety-critical #uncalibrated
+        technology 'Pure functions + versioned JSON policy'
+        summary 'Maps quality and named marker roles to exactly five decision states.'
+      }
+
+      guidance = component 'Guidance retrieval' {
+        technology 'Validated local JSON'
+        summary 'Returns reviewed educational content and citations by decision.'
+      }
+
+      contract = component 'Response contract assembler' {
+        #safety-critical
+        technology 'Pydantic + JSON Schema 2020-12'
+        summary 'Emits notices, limitations, model provenance and normalized boxes.'
+      }
+
+      inferenceGate = safetyControl 'Inference concurrency gate' {
+        #safety-critical
+        technology 'Async semaphore + queue-wait timeout'
+        summary 'Allows one active inference; queue expiry returns 503. Execution has no enforceable deadline.'
+      }
+    }
+
+    qualityPolicy = policy 'Quality policy v1' {
+      #uncalibrated
+      summary 'Candidate thresholds, explicitly UNCALIBRATED.'
+    }
+
+    decisionPolicyFile = policy 'Decision policy v1' {
+      #uncalibrated
+      summary 'Named class-role mapping and candidate score thresholds.'
+    }
+
+    guidanceStore = datastore 'Guidance and limitation corpus' {
+      summary 'Local, cited educational content; literature-reviewed, not expert-reviewed.'
+    }
+
+    modelRegistry = datastore 'Model registry' {
+      #unavailable-by-default
+      summary 'Version, hash, class names and output-layout contract. Currently empty.'
+    }
+
+    onnxArtifact = artifact 'Optional ONNX detector artifact' {
+      #unavailable-by-default
+      summary 'Replaceable runtime artifact; no trained artifact currently exists.'
+    }
+  }
+
+  trainingBoundary = system 'Development-only data and training pipeline' {
+    #development-only #agpl
+    summary 'Audits, gates, splits, trains, exports and evaluates outside the served runtime.'
+    description '''
+This boundary may process approved local datasets during development. It is never
+imported by the screening service and is not present in field deployment. Training
+uses AGPL-governed tooling; generated model licensing and provenance must be recorded.
+'''
+
+    sourceData = datastore 'Approved local source datasets' {
+      #development-only
+      summary 'Not committed, not published and never read by the runtime.'
+    }
+
+    mappingGate = safetyControl 'Mapping and annotation gate' {
+      #development-only #safety-critical
+      summary 'Requires human acknowledgement before conversion.'
+    }
+
+    specimenSplit = component 'Specimen-grouped preparation' {
+      #development-only
+      summary 'Prevents image views of one specimen from crossing split boundaries.'
+    }
+
+    trainer = component 'Training and export tooling' {
+      #development-only #agpl
+      summary 'Produces an ONNX candidate; no completed training run is claimed.'
+    }
+
+    evaluation = safetyControl 'Evaluation and parity checks' {
+      #development-only #safety-critical
+      summary 'Per-size recall, grouped confidence intervals and runtime parity.'
+    }
+  }
+
+  docsSite = system 'Architecture documentation site' {
+    #public-docs
+    technology 'LikeC4 static site on GitHub Pages'
+    summary 'Public architecture views only; no application, datasets, weights or private plans.'
+  }
+
+  operator .local screeningSystem.webUi 'opens over the local hotspot' {
+    technology 'HTTP on isolated LAN'
+  }
+  screeningSystem.webUi .local screeningSystem.api 'submits image; receives JSON result' {
+    technology 'multipart/form-data + JSON'
+  }
+  screeningSystem.api.requestBoundary .dataflow screeningSystem.api.imageIntake 'passes bounded image bytes'
+  screeningSystem.api.imageIntake .dataflow screeningSystem.api.qualityGate 'passes normalized in-memory pixels'
+  screeningSystem.api.qualityGate .dataflow screeningSystem.api.provider 'permits inference only on PASS'
+  screeningSystem.api.provider .dataflow screeningSystem.api.inferenceGate 'requests the single local inference slot'
+  screeningSystem.api.inferenceGate .dataflow screeningSystem.api.postprocess 'returns candidate detections'
+  screeningSystem.api.postprocess .dataflow screeningSystem.api.decisionPolicy 'passes named marker observations'
+  screeningSystem.api.decisionPolicy .dataflow screeningSystem.api.guidance 'selects guidance by decision'
+  screeningSystem.api.guidance .dataflow screeningSystem.api.contract 'returns citation reference'
+  screeningSystem.api.decisionPolicy .dataflow screeningSystem.api.contract 'returns one decision and optional abstention reason'
+  screeningSystem.qualityPolicy .safety screeningSystem.api.qualityGate 'configures candidate quality thresholds'
+  screeningSystem.decisionPolicyFile .safety screeningSystem.api.decisionPolicy 'configures named roles and score bands'
+  screeningSystem.guidanceStore .dataflow screeningSystem.api.guidance 'provides validated local content'
+  screeningSystem.modelRegistry .safety screeningSystem.api.provider 'verifies hash and output contract'
+  screeningSystem.onnxArtifact .artifactflow screeningSystem.api.provider 'loaded only when installed and registered'
+
+  screeningSystem.webUi -> healthProfessional 'shows result for escalation outside the app'
+  healthProfessional -> laboratory 'requests confirmatory testing when warranted'
+
+  trainingBoundary.sourceData .dataflow trainingBoundary.mappingGate 'provides annotations for audit'
+  trainingBoundary.mappingGate .dataflow trainingBoundary.specimenSplit 'releases only after human acceptance'
+  trainingBoundary.specimenSplit .dataflow trainingBoundary.trainer 'provides grouped prepared data'
+  trainingBoundary.trainer .dataflow trainingBoundary.evaluation 'provides candidate model'
+  trainingBoundary.evaluation .artifactflow screeningSystem.onnxArtifact 'publishes only after contract and evidence gates'
+  trainingBoundary.evaluation .artifactflow screeningSystem.modelRegistry 'records hash, metadata and provenance'
+}

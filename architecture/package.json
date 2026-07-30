@@ -1,0 +1,22 @@
+{
+  "name": "shrimp-screening-architecture",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LikeC4 architecture documentation for the offline shrimp visible-marker screening system.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.22.3"
+  },
+  "scripts": {
+    "dev": "likec4 dev .",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "format": "likec4 format .",
+    "format:check": "likec4 format --check .",
+    "validate": "likec4 validate .",
+    "build": "npm run clean && likec4 build . --base /edge-ai-shrimp-disease-diagnostics/ --use-hash-history --title \"Shrimp Screening Architecture\" --output dist",
+    "check:site": "node scripts/check-built-site.mjs"
+  },
+  "devDependencies": {
+    "likec4": "1.59.2"
+  }
+}

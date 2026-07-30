@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MIT
+#
+# Runtime package. Nothing here may depend, directly or transitively, on an
+# AGPL-licensed distribution -- `scripts/check_no_agpl_in_runtime.py` enforces it.
+# Notably absent and deliberately so: opencv (four numpy functions replace it),
+# torch and ultralytics (training-only, quarantined in pipeline/).
+[project]
+name = "shrimp-screening"
+version = "0.1.0"
+description = "Offline visible-marker screening service for shrimp photographs"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+license = "MIT"
+authors = [{ name = "OIP Group One" }]
+dependencies = [
+    "fastapi>=0.115",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "python-multipart>=0.0.18",
+    "uvicorn>=0.32",
+    "pillow>=11.0",
+    "numpy>=2.1",
+    "onnxruntime>=1.20",
+]
+
+[project.scripts]
+shrimp-export-schema = "shrimp_screening.contracts.export_schema:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shrimp_screening"]
