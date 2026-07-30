@@ -32,13 +32,18 @@ npm run build
 npm run check:site
 ```
 
+For the interactive local site:
+
+```bash
+npm run dev -- --listen 127.0.0.1 --port 5173
+```
+
+Open <http://127.0.0.1:5173>. To view it from another device on a trusted private hotspot, use `--listen 0.0.0.0` and the laptop's private IP; do not expose the development server to an untrusted network.
+
 The production build uses `/edge-ai-shrimp-disease-diagnostics/`, the project
 path for `Dionkcq/edge-ai-shrimp-disease-diagnostics`, and hash navigation so
 shared diagram links do not require server-side rewrites.
 
 ## Publication boundary
 
-GitHub Pages can expose a site from a private repository to the public, depending
-on the account plan and repository settings. Deployment is therefore manual via
-`.github/workflows/architecture-pages.yml`. The workflow validates and scans the
-built output before it requests a Pages deployment.
+The current GitHub plan rejects Pages for this private repository, so no public URL exists. The reusable deployment is manual via `.github/workflows/architecture-pages.yml`; it validates and scans output before deployment and becomes usable only if the repository plan/settings later permit GitHub Actions Pages.

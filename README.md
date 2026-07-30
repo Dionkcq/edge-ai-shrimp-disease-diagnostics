@@ -46,7 +46,7 @@ The frontend and API share one origin. Runtime assets, policies, guidance and mo
 | Deterministic, fail-closed dataset preparation | Implemented and tested |
 | Responsive React interface | Implemented and tested on desktop/mobile Chromium |
 | Same-origin production serving | Implemented and integration-tested |
-| LikeC4 architecture site | Implemented; manual Pages deployment workflow included |
+| LikeC4 architecture site | Implemented and locally runnable; current private-repository plan blocks Pages |
 | Training pipeline | Not implemented |
 | Trained or validated model weights | Not included |
 | Accuracy, calibration, latency and parity measurements | Not available |
@@ -135,7 +135,7 @@ npm run build
 npm run check:site
 ```
 
-GitHub Pages publishes only `architecture/dist`, and only through manual workflow dispatch. It does not publish the screening application, raw data, acceptance records or model artifacts.
+GitHub Pages would publish only `architecture/dist`, not the screening application, raw data, acceptance records or model artifacts. The current GitHub plan does not support Pages for this private repository, so there is no public LikeC4 URL. Run `npm run dev -- --listen 127.0.0.1 --port 5173` from `architecture/` and open <http://127.0.0.1:5173>. The checked-in workflow becomes usable if the repository plan/settings later support GitHub Actions Pages.
 
 ## Team
 
