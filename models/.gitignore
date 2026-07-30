@@ -1,0 +1,8 @@
+*.onnx
+*.pt
+*.pth
+*.engine
+*.tflite
+!registry.json
+!MODEL_CARD.md
+!.gitignore

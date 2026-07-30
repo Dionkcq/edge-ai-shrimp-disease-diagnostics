@@ -1,0 +1,164 @@
+#
+# Workspace root. This file carries no runtime dependencies of its own: it exists
+# to pin the interpreter, define the uv workspace, and hold the single shared
+# configuration for ruff / mypy / pytest.
+#
+# Licensing boundary (see LICENSING.md):
+#   backend/  -> MIT runtime, must never reach an AGPL dependency
+#   pipeline/ -> AGPL-3.0-or-later development tooling, never imported by backend
+#
+[tool.uv.workspace]
+members = ["backend", "pipeline"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.uv.sources]
+shrimp-screening = { workspace = true }
+shrimp-pipeline = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "shrimp-screening",
+    "shrimp-pipeline",
+    # Tooling
+    "ruff>=0.14,<0.17",
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "pytest-cov>=6.0",
+    # starlette >=1.3 requires the httpx 2.x line (distributed as `httpx2`) for its
+    # TestClient and raises StarletteDeprecationWarning on the 0.x line -- which our
+    # `filterwarnings = ["error"]` correctly turns into a collection error. BSD-3-Clause,
+    # test-only, so it does not touch the runtime licence boundary.
+    "httpx2>=2.9",
+    # Builds a synthetic ONNX graph inside tmp_path so the ONNX provider contract
+    # can be tested without committing a model file. Apache-2.0.
+    "onnx>=1.17",
+]
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["backend/src", "pipeline/src", "scripts"]
+extend-exclude = ["datasets/raw", "artifacts"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # comprehensions
+    "PTH",  # use pathlib
+    "RET",  # return simplification
+    "SIM",  # simplify
+    "TID",  # tidy imports
+    "ARG",  # unused arguments
+    "PL",   # pylint subset
+    "RUF",  # ruff-specific
+    "S",    # bandit
+]
+ignore = [
+    "S101",    # assert is the idiom in pytest and in load-time invariants
+    "PLR0913", # argument count is checked in review, not mechanically
+    "PLR2004", # magic values are unavoidable in numeric tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["ARG001", "ARG002", "S311", "PLR0915"]
+# `QualityStatus.PASS = "PASS"` is a closed vocabulary member whose name must equal
+# its value (see the module docstring), not a credential. S105 only sees the word.
+"backend/src/shrimp_screening/contracts/enums.py" = ["S105"]
+# The dataset split is deliberately a seeded `random.Random`: it must be byte-for-byte
+# reproducible across machines so a train/validation/test partition can be audited.
+# `secrets` is unusable here by definition, and nothing security-relevant depends on it.
+"pipeline/src/shrimp_pipeline/split.py" = ["S311"]
+# The conversion gate and evidence renderer enumerate independent fail-closed
+# invariants. Their branch count is intentional and each branch has focused tests.
+"pipeline/src/shrimp_pipeline/convert.py" = ["S311", "PLR0912", "PLR0915"]
+"pipeline/src/shrimp_pipeline/gate.py" = ["PLR0912", "PLR0915"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.isort]
+# `backend/tests` is imported as the top-level `tests` package (pytest prepends
+# `backend/` because `backend/__init__.py` does not exist), so isort cannot infer it
+# from `src`.
+known-first-party = ["tests"]
+
+# ---------------------------------------------------------------------------
+# mypy -- strict on backend source, which is the code that ships
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+disallow_any_unimported = true
+show_error_codes = true
+pretty = true
+mypy_path = ["backend/src", "pipeline/src"]
+files = ["backend/src", "pipeline/src", "scripts"]
+
+[[tool.mypy.overrides]]
+module = ["onnxruntime.*", "onnx.*"]
+ignore_missing_imports = true
+
+# `disallow_any_unimported` is on repository-wide and is what keeps an untyped
+# dependency from leaking `Any` into a signature. onnxruntime 1.28 ships no
+# `py.typed`, so `ort.InferenceSession` and `ort.SessionOptions` are unavoidably
+# `Any` here. The exemption is confined to the single module that is allowed to
+# import onnxruntime at all; every value crossing out of it is a typed
+# `Detection`/`DetectorMetadata`, and the artifact itself is validated at load time.
+[[tool.mypy.overrides]]
+module = "shrimp_screening.detection.onnx_provider"
+disallow_any_unimported = false
+
+# Pipeline is development tooling: typed, but not held to the runtime bar for
+# third-party stubs that do not exist (numpy is fine, PIL ships types).
+[[tool.mypy.overrides]]
+module = "shrimp_pipeline.*"
+disallow_any_explicit = false
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["backend/tests", "pipeline/tests", "scripts/tests"]
+addopts = [
+    "-q",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "requires_weights: needs real trained model weights, which do not exist in this repository",
+    "requires_real_archives: needs the local datasets/raw archives, which are not in Git",
+]
+filterwarnings = [
+    "error",
+    # Pillow raises this as an error by our own configuration; keep the class importable.
+    "default::DeprecationWarning:onnx.*",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["backend/src/shrimp_screening"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]

@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "mapping_status": "PROVISIONAL_UNCONFIRMED",
+  "accepted_mapping": {
+    "0": "dark_gill",
+    "1": "white_spot"
+  },
+  "provisional_mapping_acknowledged": true,
+  "author_confirmed": false,
+  "annotation_convention_acknowledged": true,
+  "acknowledgement": "BG-only and combined-folder boxes use materially different annotation conventions; mapping remains a strong inference rather than publisher-confirmed metadata.",
+  "evidence_report": "artifacts/audit/evidence/evidence_report.json",
+  "evidence_report_sha256": "REPLACE_WITH_SHA256_OF_EXACT_EVIDENCE_REPORT_BYTES",
+  "overlay_sheets_reviewed": 60,
+  "reviewer": "REPLACE_WITH_HUMAN_REVIEWER",
+  "reviewed_on": "YYYY-MM-DD"
+}

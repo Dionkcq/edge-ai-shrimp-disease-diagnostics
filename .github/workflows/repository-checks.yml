@@ -12,7 +12,7 @@ jobs:
   repository-policy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
       - name: Check required documentation and prohibited artifacts
@@ -25,21 +25,7 @@ jobs:
           test -f LICENSE
           test -f datasets/DATASET_REGISTRY.md
 
-          prohibited=$(find . -type f \
-            \( -path './datasets/raw/*' -o -path './datasets/processed/*' \
-               -o -name '*.pt' -o -name '*.pth' -o -name '*.onnx' \
-               -o -name '*.ckpt' -o -name '.env' -o -name '.env.*' \) \
-            -not -path './.git/*' -print)
-          if [ -n "$prohibited" ]; then
-            printf 'Prohibited files found:\n%s\n' "$prohibited" >&2
-            exit 1
-          fi
-
-          oversized=$(find . -type f -not -path './.git/*' -size +20M -print)
-          if [ -n "$oversized" ]; then
-            printf 'Files larger than 20 MB found:\n%s\n' "$oversized" >&2
-            exit 1
-          fi
+          python scripts/check_repository_policy.py
 
       - name: Validate JSON metadata
         run: python -m json.tool datasets/source-notes/dataset_manifest.json >/dev/null

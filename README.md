@@ -1,132 +1,156 @@
 # Edge AI for Sustainable Shrimp Disease Diagnostics
 
-[![Project status](https://img.shields.io/badge/status-foundation%20and%20data%20audit-2563eb)](#project-status)
-[![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)](#development)
-[![License: MIT](https://img.shields.io/badge/code%20license-MIT-green.svg)](LICENSE)
-[![Data policy](https://img.shields.io/badge/datasets-not%20stored%20in%20Git-orange)](#data-and-model-artifacts)
+An offline, appearance-based shrimp screening demonstrator for a phone and laptop on the same private LAN or hotspot. The phone captures and displays; a laptop-hosted FastAPI service performs intake checks and, only when a validated artifact is installed, local ONNX inference.
 
-An offline computer-vision demonstrator for screening visible shrimp-health markers at pond side. The project combines a compact edge model with a cautious, locally stored guidance layer.
+> **Educational screening only.** This software does not confirm a pathogen or disease, determine that an animal is healthy or disease-free, replace laboratory testing, or prescribe medication, antibiotics, or chemical dosing.
 
-> This is an educational screening and decision-support project. It does not provide a laboratory-confirmed diagnosis and must not be used to prescribe medication, antibiotics or chemical dosing.
+## Scope
 
-## Team
+The demonstrator screens one photograph for two visible appearances:
 
-OIP Group One:
+- dark-gill-like regions;
+- white-spot-like regions.
 
-- Dion
-- Johnathan
-- Lambert
-- Bryan
+It does not support EMS/AHPND. A clean checkout contains no trained weights or production ONNX artifact, so the service deliberately returns `UNABLE_TO_ASSESS` with `MODEL_UNAVAILABLE`.
 
-## Problem
-
-Shrimp disease can spread quickly. Small and remote farms may not have reliable internet, a nearby laboratory or immediate access to an aquatic-health specialist. The project explores whether a farmer can photograph one shrimp and receive a useful offline screening result without pretending that an image can confirm a pathogen.
-
-## Intended system
+The response vocabulary is fixed:
 
 ```text
-Photograph one shrimp
-        ↓
-Check that the photograph is usable
-        ↓
-Run a compact model on the local device
-        ↓
-Return a visual-marker result or refuse uncertain cases
-        ↓
-Explain the result using reviewed information stored on the device
-        ↓
-Escalate unsupported, severe or uncertain cases
+GILL_DARKENING_MARKER_DETECTED
+WHITE_SPOT_MARKER_DETECTED
+MULTIPLE_TARGET_MARKERS_DETECTED
+NO_TARGET_MARKER_DETECTED
+UNABLE_TO_ASSESS
 ```
 
-The first supported visual markers are white-spot appearance and dark-gill appearance. EMS/AHPND is outside the current scope because the verified pond-side datasets do not include that class.
+`NO_TARGET_MARKER_DETECTED` means only that the two target appearances were not retained in that photograph. It is not a health assessment.
 
-## Safety boundary
+## Runtime flow
 
-The system must:
+```text
+Phone or laptop selects one JPEG/PNG
+→ FastAPI streams and bounds the multipart body
+→ image format, dimensions and quality are checked
+→ optional local ONNX detector runs on the laptop
+→ confidence and abstention policy chooses one stable result
+→ the browser shows normalized boxes and cited local guidance
+```
 
-- say when it cannot assess an image;
-- separate visible markers from confirmed disease;
-- explain that a negative marker result does not prove that a shrimp is healthy;
-- keep guidance educational and source-backed;
-- avoid medication, antibiotic and chemical dosing advice;
-- recommend expert or laboratory confirmation when appropriate.
+The frontend and API share one origin. Runtime assets, policies, guidance and model metadata are local. Uploaded image bytes remain in memory and are discarded after the request.
 
-## Project status
-
-The repository currently contains the project foundation and verified data records. Two source archives have been checked for licensing and integrity. Model development begins after the team confirms the course requirements, target device and evaluation rules.
+## Current status
 
 | Area | Status |
 |---|---|
-| Repository and collaboration rules | Ready |
-| Dataset provenance and checksums | Verified |
-| Specimen-aware split requirement | Defined |
-| Target hardware | Awaiting lecturer confirmation |
-| Model training | Not started |
-| Offline application | Not started |
-| Domain review of guidance | Not started |
+| Secure FastAPI contracts and image intake | Implemented and tested |
+| Deterministic, fail-closed dataset preparation | Implemented and tested |
+| Responsive React interface | Implemented and tested on desktop/mobile Chromium |
+| Same-origin production serving | Implemented and integration-tested |
+| LikeC4 architecture site | Implemented; manual Pages deployment workflow included |
+| Training pipeline | Not implemented |
+| Trained or validated model weights | Not included |
+| Accuracy, calibration, latency and parity measurements | Not available |
+| Guidance review | Literature-reviewed; not expert-reviewed |
+
+See [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md) and [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) before interpreting any result. For moving the project to the stronger training laptop, follow [`HANDOFF.md`](HANDOFF.md); it clearly separates steps available now from the not-yet-implemented trainer.
 
 ## Repository layout
 
 ```text
-.github/               Pull-request, issue and repository checks
-CONTRIBUTING.md        Team workflow and review rules
-SECURITY.md            Private reporting and safety policy
-LICENSE                License for repository code and original documentation
-datasets/              Dataset registry and reproducibility metadata
-docs/                  Project brief and technical documentation
-models/                 Model cards only; large weights stay outside Git
-notebooks/              Exploration and training experiments
-src/                    Reusable training, evaluation and inference code
-tests/                  Automated checks
+backend/       FastAPI service, contracts, intake, policies and inference providers
+frontend/      React/Vite interface, unit tests and Playwright tests
+pipeline/      AGPL dataset audit, evidence and preparation tooling
+contracts/     Generated JSON schemas shared across boundaries
+policy/        Versioned quality and decision policies
+guidance/      Cited, non-generative educational guidance
+architecture/  LikeC4 model and publishable architecture site
+scripts/       Repository, licensing and release checks
+datasets/      Provenance records and non-accepting mapping template
+models/        Empty registry and model-card requirements; no weights
 ```
 
-Git does not preserve empty directories, so some development folders will appear after their first file is added.
+Raw archives, processed data, acceptance records, generated artifacts, experiment runs and model weights are ignored and rejected by repository policy.
 
-## Data and model artifacts
+## Run locally
 
-Raw datasets, processed copies, trained weights, experiment runs and generated artifacts are excluded from Git. The team keeps shared archives in Google Drive and records the following information here:
+### Prerequisites
 
-- official source and DOI;
-- exact dataset version and license;
-- archive checksum;
-- known limitations;
-- rules that prevent train/test leakage.
+- Python 3.13
+- [`uv`](https://docs.astral.sh/uv/)
+- Node.js 24 or newer
+- npm
 
-See [`datasets/DATASET_REGISTRY.md`](datasets/DATASET_REGISTRY.md) and [`datasets/source-notes/dataset_manifest.json`](datasets/source-notes/dataset_manifest.json).
-
-The dataset licenses apply to the datasets themselves. The repository's MIT license does not replace or override those licenses.
-
-## Development
-
-Python 3.9 or newer is required by the course materials.
+### Install and verify
 
 ```bash
-git clone git@github.com:Dionkcq/edge-ai-shrimp-disease-diagnostics.git
-cd edge-ai-shrimp-disease-diagnostics
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
+uv sync --locked --all-packages --all-groups
+uv run pytest
+uv run ruff check backend pipeline scripts
+uv run ruff format --check backend pipeline scripts
+uv run mypy backend/src pipeline/src scripts
+
+cd frontend
+npm ci
+npm run check
+npm run test:e2e
 ```
 
-Dependencies and executable commands will be added when the team approves the technical stack. Do not invent a local setup by copying unreviewed package lists into the repository.
+### Build the interface and start FastAPI
 
-## Team workflow
+```bash
+cd frontend
+npm run build
+cd ..
+uv run uvicorn shrimp_screening.main:create_default_app \
+  --factory --host 127.0.0.1 --port 8000
+```
 
-1. Branch from `main` using a short name such as `feat/data-audit`.
-2. Keep each change focused and add tests where code behaviour changes.
-3. Open a pull request and request at least one teammate review.
-4. Do not commit raw images, trained weights, credentials or personal data.
-5. Merge only after the required checks pass.
+Open `http://127.0.0.1:8000`. To use a phone, bind only on a trusted private LAN/hotspot interface and apply the host firewall policy described in the deployment documentation. Internet access is not required.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for commit conventions and review expectations.
+The default service is intentionally unavailable for model inference. Installing an arbitrary ONNX file is insufficient: the registry SHA-256, class metadata, tensor shapes and export contract must all validate at startup.
+
+## Dataset preparation
+
+The source-folder class namespaces are independent. The combined-folder interpretation remains provisional and publisher-unconfirmed:
+
+```text
+BG/0      → global 0, dark-gill appearance
+WSSV/0    → global 1, white-spot appearance
+WSSV_BG/0 → global 0, dark-gill appearance (provisional)
+WSSV_BG/1 → global 1, white-spot appearance (provisional)
+```
+
+Preparation fails closed until a real reviewer inspects at least 60 generated overlays, accepts the provisional semantics and annotation-convention drift, and records the exact evidence-report SHA-256. The checked-in example is deliberately non-accepting. No boxes are fabricated; Healthy images receive empty YOLO label files.
+
+See [`datasets/README.md`](datasets/README.md) and [`datasets/DATASET_REGISTRY.md`](datasets/DATASET_REGISTRY.md).
+
+## Architecture documentation
+
+```bash
+cd architecture
+npm ci
+npm run format:check
+npm run validate
+npm run build
+npm run check:site
+```
+
+GitHub Pages publishes only `architecture/dist`, and only through manual workflow dispatch. It does not publish the screening application, raw data, acceptance records or model artifacts.
+
+## Team
+
+OIP Group One: Dion, Johnathan, Lambert and Bryan.
+
+Development and review conventions are in [`CONTRIBUTING.md`](CONTRIBUTING.md). Report security issues privately as described in [`SECURITY.md`](SECURITY.md).
 
 ## Sources
 
-- [Original project brief](docs/project-brief.md)
 - [ShrimpDiseaseImageBD Version 3](https://data.mendeley.com/datasets/jhrtdj9txm/3), CC BY 4.0
 - [TigerShrimpBD Version 1](https://data.mendeley.com/datasets/9dj4sk5d55/1), CC BY 4.0
 - [ShrimpDiseaseImageBD companion paper](https://doi.org/10.1016/j.dib.2025.111553)
 
-## License
+## Licensing
 
-Original code and documentation in this repository are licensed under the [MIT License](LICENSE). Third-party datasets and publications retain their own licenses and attribution requirements.
+This repository is **not uniformly MIT-licensed**. Runtime/backend/frontend and original documentation use the licenses declared for their trees; `pipeline/` is AGPL-3.0-or-later because it is the training/data-tooling boundary. Datasets and publications retain their own licenses and attribution requirements.
+
+Read [`LICENSING.md`](LICENSING.md) for the authoritative per-tree map and dependency boundary.

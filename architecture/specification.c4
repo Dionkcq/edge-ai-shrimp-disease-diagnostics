@@ -1,0 +1,145 @@
+specification {
+  element person {
+    style {
+      shape person
+      color amber
+    }
+  }
+
+  element system {
+    style {
+      color indigo
+      opacity 10%
+    }
+  }
+
+  element externalSystem {
+    style {
+      color gray
+      border dashed
+    }
+  }
+
+  element container {
+    style {
+      color primary
+      shape rectangle
+    }
+  }
+
+  element browser {
+    style {
+      color indigo
+      shape browser
+    }
+  }
+
+  element component {
+    style {
+      color secondary
+      shape component
+    }
+  }
+
+  element datastore {
+    style {
+      color green
+      shape storage
+    }
+  }
+
+  element artifact {
+    style {
+      color amber
+      shape document
+    }
+  }
+
+  element policy {
+    style {
+      color amber
+      shape document
+    }
+  }
+
+  element safetyControl {
+    style {
+      color red
+      shape component
+    }
+  }
+
+  element decisionState {
+    style {
+      color secondary
+      shape rectangle
+    }
+  }
+
+  deploymentNode environment {
+    style {
+      color gray
+      opacity 8%
+    }
+  }
+
+  deploymentNode device {
+    style {
+      color indigo
+    }
+  }
+
+  deploymentNode process {
+    style {
+      color primary
+    }
+  }
+
+  relationship local {
+    line solid
+    color indigo
+  }
+
+  relationship dataflow {
+    line solid
+    color primary
+  }
+
+  relationship safety {
+    line dotted
+    color red
+  }
+
+  relationship artifactflow {
+    line dashed
+    color amber
+  }
+
+  tag offline {
+    color #4F46E5
+  }
+  tag ephemeral {
+    color rgb(5 150 105)
+  }
+  tag untrusted {
+    color #DC2626
+  }
+  tag safety-critical {
+    color #DC2626
+  }
+  tag development-only {
+    color #D97706
+  }
+  tag agpl {
+    color #D97706
+  }
+  tag unavailable-by-default {
+    color #6B7280
+  }
+  tag uncalibrated {
+    color #DC2626
+  }
+  tag public-docs {
+    color rgb(5 150 105)
+  }
+}

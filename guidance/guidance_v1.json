@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0.0",
+  "review_status": "LITERATURE_REVIEWED_NOT_EXPERT_REVIEWED",
+  "review_note": "Conservative educational material checked against published animal-health standards. It has not been reviewed by a qualified aquatic-animal health professional and must not be presented as field guidance.",
+  "sources": [
+    {
+      "id": "woah-aquatic-manual",
+      "title": "Manual of Diagnostic Tests for Aquatic Animals",
+      "publisher": "World Organisation for Animal Health (WOAH)",
+      "url": "https://www.woah.org/en/what-we-do/standards/codes-and-manuals/aquatic-manual-online-access/",
+      "accessed_on": "2026-07-30"
+    },
+    {
+      "id": "woah-wssv-code",
+      "title": "Aquatic Animal Health Code, Chapter 9.9: Infection with white spot syndrome virus",
+      "publisher": "World Organisation for Animal Health (WOAH)",
+      "url": "https://www.woah.org/fileadmin/Home/eng/Health_standards/aahc/current/chapitre_wsd.pdf",
+      "accessed_on": "2026-07-30"
+    },
+    {
+      "id": "project-limitations",
+      "title": "Declared limitations of this screening system",
+      "publisher": "OIP Group One",
+      "url": "docs/LIMITATIONS.md",
+      "accessed_on": "2026-07-30"
+    }
+  ],
+  "items": {
+    "GILL_DARKENING_MARKER_DETECTED": {
+      "id": "guide-gill-darkening-v1",
+      "headline": "A dark-gill-like region was marked",
+      "body": "Retake the photograph under even light and compare several shrimp from the same pond. A visible appearance alone cannot identify its cause. Record the pond, time and recent husbandry changes, reduce avoidable handling, and ask a qualified aquatic-animal health professional whether sampling is warranted.",
+      "source_ids": ["woah-aquatic-manual"]
+    },
+    "WHITE_SPOT_MARKER_DETECTED": {
+      "id": "guide-white-spot-v1",
+      "headline": "A white-spot-like region was marked",
+      "body": "Check the original photograph at full resolution and repeat the capture on more than one shrimp. Reflections, shell texture and debris can resemble spots. Treat this as a reason to document and escalate, not as confirmation of an infection.",
+      "source_ids": ["woah-wssv-code", "woah-aquatic-manual"]
+    },
+    "MULTIPLE_TARGET_MARKERS_DETECTED": {
+      "id": "guide-multiple-v1",
+      "headline": "Both marker types were found",
+      "body": "Repeat the capture under even light, inspect several animals, and preserve a clear record for a qualified aquatic-animal health professional. The two visible appearances may have unrelated causes and the image cannot identify a pathogen.",
+      "source_ids": ["woah-aquatic-manual", "woah-wssv-code"]
+    },
+    "NO_TARGET_MARKER_DETECTED": {
+      "id": "guide-no-marker-v1",
+      "headline": "No target marker was retained",
+      "body": "This result does not mean the shrimp is healthy or disease-free. The screen only looks for two visible appearances and can miss subtle, hidden or out-of-scope conditions. Continue routine observation and use professional assessment when pond behaviour or mortality is concerning.",
+      "source_ids": ["woah-aquatic-manual", "project-limitations"]
+    },
+    "UNABLE_TO_ASSESS": {
+      "id": "guide-unable-v1",
+      "headline": "The image could not be assessed",
+      "body": "Follow the specific retake instruction shown by the app. If no screening model is installed, this build can validate image handling and the user flow but cannot screen the photograph at all.",
+      "source_ids": ["project-limitations"]
+    }
+  }
+}

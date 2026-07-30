@@ -2,8 +2,21 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 .venv/
 venv/
+
+# Node, browser-test and generated web output
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+architecture/node_modules/
+architecture/dist/
+architecture/build/
 
 # Notebooks
 .ipynb_checkpoints/
@@ -18,6 +31,7 @@ venv/
 # Large data and model artifacts
 datasets/raw/
 datasets/processed/
+datasets/mapping_acceptance.json
 models/*.pt
 models/*.pth
 models/*.onnx

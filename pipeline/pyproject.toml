@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Development-time data tooling. This package is NEVER imported by the backend;
+# `backend/tests/security/test_dependency_boundary.py` asserts the boundary.
+#
+# The training toolchain (ultralytics, torch) is deliberately NOT declared here.
+# Declaring it would pull an AGPL distribution into the single workspace lockfile
+# that also resolves the MIT runtime. It is intentionally unavailable until a
+# separately licensed training implementation and install path are reviewed. `shrimp-pipeline train` reports UNAVAILABLE rather than pretending.
+[project]
+name = "shrimp-pipeline"
+version = "0.1.0"
+description = "Offline data audit, mapping-gate and conversion tooling for the shrimp datasets"
+requires-python = ">=3.13,<3.14"
+license = "AGPL-3.0-or-later"
+authors = [{ name = "OIP Group One" }]
+dependencies = [
+    "pillow>=11.0",
+    "numpy>=2.1",
+]
+
+[project.scripts]
+shrimp-pipeline = "shrimp_pipeline.cli:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shrimp_pipeline"]
