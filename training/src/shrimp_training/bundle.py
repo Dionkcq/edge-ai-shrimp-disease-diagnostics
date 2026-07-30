@@ -322,7 +322,8 @@ def build_return_bundle(
                     shutil.copyfileobj(source, target, length=_CHUNK_BYTES)
             for name, payload in sorted(generated.items()):
                 archive.writestr(_zip_info(name), payload)
-        with temporary.open("rb") as archive_handle:
+        # Windows FlushFileBuffers requires a writable OS handle for os.fsync().
+        with temporary.open("r+b") as archive_handle:
             os.fsync(archive_handle.fileno())
         verify_return_bundle(
             temporary,
