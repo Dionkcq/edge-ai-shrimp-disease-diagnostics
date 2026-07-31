@@ -36,6 +36,16 @@ def _profile() -> TrainingProfile:
     )
 
 
+def _matched(precision: float, recall: float) -> dict[str, float]:
+    """Build a threshold_matched_metrics block flat across every compared confidence."""
+    values = {"precision": precision, "recall": recall}
+    return {
+        f"{metric}@{confidence:.2f}": values[metric]
+        for metric, (_, confidences) in artifacts._CURVE_KEYS.items()
+        for confidence in confidences
+    }
+
+
 def _bind_dataset(
     monkeypatch: pytest.MonkeyPatch,
     prepared_root: Path,
@@ -58,8 +68,15 @@ def _bind_dataset(
     return calls
 
 
+def _flat_curve(value: float) -> list[list[float]]:
+    """Two per-class rows over Ultralytics' 1000-point confidence axis."""
+    return [[value] * 1000, [value] * 1000]
+
+
 class _Box:
     maps: ClassVar[list[float]] = [0.21, 0.34]
+    p_curve: ClassVar[list[list[float]]] = _flat_curve(0.5)
+    r_curve: ClassVar[list[list[float]]] = _flat_curve(0.4)
 
 
 class _Validation:
@@ -203,7 +220,7 @@ def test_compare_parity_accepts_small_deltas_and_rejects_drift(tmp_path: Path) -
     pt = tmp_path / "pt.json"
     onnx = tmp_path / "onnx.json"
     baseline = {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "artifact_sha256": "a" * 64,
         "dataset_descriptor_sha256": "c" * 64,
         "prepared_manifest_sha256": "d" * 64,
@@ -212,6 +229,7 @@ def test_compare_parity_accepts_small_deltas_and_rejects_drift(tmp_path: Path) -
         "split": "test",
         "metrics": {"precision": 0.5, "recall": 0.4, "map50": 0.42, "map50_95": 0.275},
         "per_class_map50_95": [0.21, 0.34],
+        "threshold_matched_metrics": _matched(0.5, 0.4),
     }
     pt.write_text(json.dumps(baseline), encoding="utf-8")
     close = dict(baseline)
@@ -241,6 +259,66 @@ def test_compare_parity_accepts_small_deltas_and_rejects_drift(tmp_path: Path) -
     onnx.write_text(json.dumps(close), encoding="utf-8")
     with pytest.raises(ArtifactError, match="parity"):
         compare_parity(pt, onnx, tmp_path / "parity-failed.json", tolerance=0.01)
+
+
+def test_precision_is_only_compared_where_enough_predictions_survive() -> None:
+    """Precision's denominator is the prediction count, which collapses at high confidence.
+
+    On the reference test split roughly 20 predictions survive at confidence 0.50, so one
+    differing detection moves precision by about 0.05 -- five times the parity tolerance.
+    Recall's denominator is the fixed ground-truth count, so it stays comparable throughout.
+    Extending precision into the sparse tail would make the gate measure sampling noise.
+    """
+    _, precision_confidences = artifacts._CURVE_KEYS["precision"]
+    _, recall_confidences = artifacts._CURVE_KEYS["recall"]
+    assert max(precision_confidences) <= 0.20
+    assert set(precision_confidences) <= set(recall_confidences)
+    assert max(recall_confidences) >= 0.50
+
+
+def test_parity_ignores_reported_operating_point_but_catches_matched_divergence(
+    tmp_path: Path,
+) -> None:
+    """Reported precision/recall come from each artifact's own max-F1 confidence.
+
+    Two faithful artifacts can select different confidences and report very different
+    precision/recall while behaving identically, so those reported values must not fail
+    the gate. Divergence at a shared confidence is real and must still fail it.
+    """
+    baseline = {
+        "schema_version": "1.1.0",
+        "artifact_sha256": "a" * 64,
+        "dataset_descriptor_sha256": "c" * 64,
+        "prepared_manifest_sha256": "d" * 64,
+        "dataset_inventory_sha256": "e" * 64,
+        "test_image_count": 3,
+        "split": "test",
+        "metrics": {"precision": 0.148, "recall": 0.260, "map50": 0.42, "map50_95": 0.275},
+        "per_class_map50_95": [0.21, 0.34],
+        "threshold_matched_metrics": _matched(0.5, 0.4),
+    }
+    pt = tmp_path / "pt.json"
+    onnx = tmp_path / "onnx.json"
+    pt.write_text(json.dumps(baseline), encoding="utf-8")
+
+    # Same behaviour at every shared confidence, but a wildly different reported operating
+    # point -- the exact pattern observed between a checkpoint and its own ONNX export.
+    shifted = dict(baseline)
+    shifted["artifact_sha256"] = "b" * 64
+    shifted["metrics"] = {**baseline["metrics"], "precision": 0.162, "recall": 0.234}
+    onnx.write_text(json.dumps(shifted), encoding="utf-8")
+    assert compare_parity(pt, onnx, tmp_path / "ok.json", tolerance=0.01).passed is True
+
+    # Divergence at a shared confidence is genuine and must fail.
+    diverged = dict(baseline)
+    diverged["artifact_sha256"] = "b" * 64
+    diverged["threshold_matched_metrics"] = {
+        **_matched(0.5, 0.4),
+        "recall@0.25": 0.44,
+    }
+    onnx.write_text(json.dumps(diverged), encoding="utf-8")
+    with pytest.raises(ArtifactError, match="parity"):
+        compare_parity(pt, onnx, tmp_path / "diverged.json", tolerance=0.01)
 
 
 def test_export_uses_static_runtime_contract_arguments(tmp_path: Path) -> None:

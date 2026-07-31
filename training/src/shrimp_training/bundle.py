@@ -139,7 +139,7 @@ def _validate_semantics(
     for kind in ("pytorch", "onnx"):
         name = f"records/evaluation-{kind}.json"
         evaluation = _json_document(payloads[name], f"{kind} evaluation")
-        if evaluation.get("schema_version") != "1.0.0" or evaluation.get("split") != "test":
+        if evaluation.get("schema_version") != "1.1.0" or evaluation.get("split") != "test":
             raise BundleError(f"{kind} evaluation is not a versioned test-split record")
         if (
             evaluation.get("test_image_count") is None
@@ -171,7 +171,7 @@ def _validate_semantics(
         raise BundleError("ONNX evaluation artifact digest does not match bundled ONNX")
 
     parity = _json_document(payloads["records/parity.json"], "parity record")
-    if parity.get("schema_version") != "1.0.0" or parity.get("passed") is not True:
+    if parity.get("schema_version") != "1.1.0" or parity.get("passed") is not True:
         raise BundleError("parity record is absent or does not pass")
     expected_evaluation_digests = {
         "pytorch_evaluation_sha256": inventory["records/evaluation-pytorch.json"]["sha256"],
