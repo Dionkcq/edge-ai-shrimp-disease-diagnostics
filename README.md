@@ -47,7 +47,7 @@ The frontend and API share one origin. Runtime assets, policies, guidance and mo
 | Responsive React interface | Implemented and tested on desktop/mobile Chromium |
 | Same-origin production serving | Implemented and integration-tested |
 | LikeC4 architecture site | Deployed and verified on GitHub Pages |
-| Training pipeline | Not implemented |
+| Isolated training/export workflow | Implemented and orchestration-tested; no real run completed |
 | Trained or validated model weights | Not included |
 | Accuracy, calibration, latency and parity measurements | Not available |
 | Guidance review | Literature-reviewed; not expert-reviewed |
@@ -60,6 +60,7 @@ See [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md) and [`docs/LIMITATIONS.md`](docs/
 backend/       FastAPI service, contracts, intake, policies and inference providers
 frontend/      React/Vite interface, unit tests and Playwright tests
 pipeline/      AGPL dataset audit, evidence and preparation tooling
+training/      Separately locked Python 3.11 AGPL training/export tooling
 contracts/     Generated JSON schemas shared across boundaries
 policy/        Versioned quality and decision policies
 guidance/      Cited, non-generative educational guidance
@@ -85,9 +86,9 @@ Raw archives, processed data, acceptance records, generated artifacts, experimen
 ```bash
 uv sync --locked --all-packages --all-groups
 uv run pytest
-uv run ruff check backend pipeline scripts
-uv run ruff format --check backend pipeline scripts
-uv run mypy backend/src pipeline/src scripts
+uv run ruff check backend pipeline training scripts
+uv run ruff format --check backend pipeline training scripts
+uv run mypy
 
 cd frontend
 npm ci
@@ -123,6 +124,16 @@ WSSV_BG/1 → global 1, white-spot appearance (provisional)
 Preparation fails closed until a real reviewer inspects at least 60 generated overlays, accepts the provisional semantics and annotation-convention drift, and records the exact evidence-report SHA-256. The checked-in example is deliberately non-accepting. No boxes are fabricated; Healthy images receive empty YOLO label files.
 
 See [`datasets/README.md`](datasets/README.md) and [`datasets/DATASET_REGISTRY.md`](datasets/DATASET_REGISTRY.md).
+
+## Model training and export
+
+Training is isolated from the Python 3.13 runtime workspace in a separately locked
+Python 3.11 AGPL project. It validates the prepared dataset, trains with a generic
+6 GB profile and CUDA-memory fallback, evaluates the locked test split, exports a
+static ONNX graph, checks PyTorch/ONNX parity, and creates a checksummed private
+return bundle. No weights or generated training records are committed.
+
+See [`training/README.md`](training/README.md) for the generic reproducible workflow.
 
 ## Architecture documentation
 

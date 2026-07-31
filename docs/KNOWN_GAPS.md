@@ -18,9 +18,10 @@ Last reviewed: 2026-07-30.
 
 There are no weights. `models/registry.json` declares zero models, `/readyz`
 returns 503 on a clean checkout, and every screening returns `UNABLE_TO_ASSESS` /
-`MODEL_UNAVAILABLE`. The runtime contract and fail-closed data-preparation tools are
-implemented. Training, model selection and export are not. No accuracy, latency or
-calibration figure anywhere in this repository has been measured.
+`MODEL_UNAVAILABLE`. The runtime contract, fail-closed data preparation, isolated
+training orchestration, test evaluation, static ONNX export, parity checks and
+private bundle verification are implemented. No real training run has completed,
+so no accuracy, latency or calibration figure has been measured.
 
 **What would change our mind:** a completed training run whose ONNX export passes
 the contract assertions in `detection/onnx_provider.py`, with per-size recall and

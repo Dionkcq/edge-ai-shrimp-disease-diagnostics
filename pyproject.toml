@@ -9,6 +9,7 @@
 #
 [tool.uv.workspace]
 members = ["backend", "pipeline"]
+exclude = ["training"]
 
 [tool.uv]
 default-groups = ["dev"]
@@ -42,7 +43,7 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-src = ["backend/src", "pipeline/src", "scripts"]
+src = ["backend/src", "pipeline/src", "training/src", "scripts"]
 extend-exclude = ["datasets/raw", "artifacts"]
 
 [tool.ruff.lint]
@@ -84,6 +85,9 @@ ignore = [
 # invariants. Their branch count is intentional and each branch has focused tests.
 "pipeline/src/shrimp_pipeline/convert.py" = ["S311", "PLR0912", "PLR0915"]
 "pipeline/src/shrimp_pipeline/gate.py" = ["PLR0912", "PLR0915"]
+# Return-bundle verification enumerates independent archive, path, size, schema, hash,
+# and registry invariants. Keeping them in one fail-closed verification pass is intentional.
+"training/src/shrimp_training/bundle.py" = ["PLR0912"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
@@ -105,8 +109,8 @@ warn_unused_ignores = true
 disallow_any_unimported = true
 show_error_codes = true
 pretty = true
-mypy_path = ["backend/src", "pipeline/src"]
-files = ["backend/src", "pipeline/src", "scripts"]
+mypy_path = ["backend/src", "pipeline/src", "training/src"]
+files = ["backend/src", "pipeline/src", "training/src", "scripts"]
 
 [[tool.mypy.overrides]]
 module = ["onnxruntime.*", "onnx.*"]
@@ -133,7 +137,7 @@ disallow_any_explicit = false
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["backend/tests", "pipeline/tests", "scripts/tests"]
+testpaths = ["backend/tests", "pipeline/tests", "training/tests", "scripts/tests"]
 addopts = [
     "-q",
     "--strict-markers",

@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "profile_name": "compact-nvidia-6gb",
+  "image_size": 640,
+  "epochs": 100,
+  "patience": 20,
+  "batch_fallback": [4, 2, 1],
+  "workers": 4,
+  "device": 0,
+  "amp": true,
+  "deterministic": true,
+  "seed": 20260730,
+  "cache": false
+}
