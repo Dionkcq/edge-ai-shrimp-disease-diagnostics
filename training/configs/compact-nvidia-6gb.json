@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "profile_name": "compact-nvidia-6gb",
   "image_size": 640,
-  "epochs": 100,
+  "epochs": 300,
   "patience": 20,
   "batch_fallback": [4, 2, 1],
   "workers": 4,
