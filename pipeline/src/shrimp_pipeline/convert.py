@@ -9,10 +9,11 @@ import json
 import random
 import shutil
 import tempfile
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 from shrimp_pipeline.archive import ArchiveEntry, ArchiveReader
 from shrimp_pipeline.gate import require_mapping_acceptance
@@ -25,10 +26,118 @@ _SOURCE_CLASS_MAP: dict[str, dict[int, int]] = {
     "WSSV": {0: 1},
     "WSSV_BG": {0: 0, 1: 1},
 }
+_GLOBAL_CLASS_NAMES: dict[int, str] = {0: "dark_gill", 1: "white_spot"}
+
+# Overlay rendering exists so a human can falsify the class mapping by eye. Source
+# photographs are around 2048 px, so fixed-size annotations are unreadable: the previous
+# bitmap default font drew a 6x8 px digit, roughly 0.3% of the image width. Every visual
+# dimension below therefore scales with the image.
+#
+# Boxes cluster tightly on these specimens, so per-box text is limited to the class digit
+# and the class colour carries the meaning. Spelling the name beside every box occludes the
+# very tissue under review. Amber and blue are used because they stay separable under the
+# common red-green colour vision deficiencies, and the digit remains as a non-colour cue.
+_OVERLAY_LABEL_TEXT = (255, 255, 255)
+_OVERLAY_CLASS_COLOURS: dict[int, tuple[int, int, int]] = {
+    0: (245, 158, 11),
+    1: (37, 99, 235),
+}
+_OVERLAY_LEGEND_BACKGROUND = (17, 24, 39)
+_OVERLAY_FONT_SCALE = 0.022
+_OVERLAY_MINIMUM_FONT_SIZE = 14
+_OVERLAY_OUTLINE_SCALE = 0.0025
+_OVERLAY_MINIMUM_OUTLINE_WIDTH = 2
 
 
 class ConversionError(RuntimeError):
     """Source data violates an invariant required for safe conversion."""
+
+
+@dataclass(frozen=True, slots=True)
+class _OverlayStyle:
+    """Image-relative drawing metrics so annotations stay legible at any resolution."""
+
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont
+    outline_width: int
+    padding: int
+
+    @classmethod
+    def for_image(cls, width: int, height: int) -> _OverlayStyle:
+        shorter = min(width, height)
+        font_size = max(_OVERLAY_MINIMUM_FONT_SIZE, round(shorter * _OVERLAY_FONT_SCALE))
+        outline_width = max(_OVERLAY_MINIMUM_OUTLINE_WIDTH, round(shorter * _OVERLAY_OUTLINE_SCALE))
+        return cls(
+            font=ImageFont.load_default(size=font_size),
+            outline_width=outline_width,
+            padding=max(2, round(font_size * 0.25)),
+        )
+
+
+def _draw_class_label(
+    draw: ImageDraw.ImageDraw,
+    style: _OverlayStyle,
+    class_id: int,
+    origin: tuple[float, float],
+    image_size: tuple[int, int],
+) -> None:
+    """Draw a compact class-digit chip anchored to a box.
+
+    Only the digit is drawn. These specimens carry many boxes within a small area, so
+    spelling the class name at every box hides the tissue the reviewer must judge; the
+    name is stated once in the legend instead.
+    """
+    left, top = origin
+    image_width, image_height = image_size
+    text = str(class_id)
+    bounds = draw.textbbox((0, 0), text, font=style.font)
+    chip_width = bounds[2] - bounds[0] + style.padding * 2
+    chip_height = bounds[3] - bounds[1] + style.padding * 2
+    chip_left = min(max(0.0, left), max(0.0, image_width - chip_width))
+    # Prefer sitting the chip above the box; drop it inside when there is no headroom.
+    chip_top = top - chip_height
+    if chip_top < 0.0:
+        chip_top = max(0.0, min(top, image_height - chip_height))
+    draw.rectangle(
+        (chip_left, chip_top, chip_left + chip_width, chip_top + chip_height),
+        fill=_OVERLAY_CLASS_COLOURS[class_id],
+    )
+    draw.text(
+        (chip_left + style.padding - bounds[0], chip_top + style.padding - bounds[1]),
+        text,
+        font=style.font,
+        fill=_OVERLAY_LABEL_TEXT,
+    )
+
+
+def _draw_legend(draw: ImageDraw.ImageDraw, style: _OverlayStyle, class_ids: Iterable[int]) -> None:
+    """State each present class once, in a corner panel, away from the specimen."""
+    entries = [
+        (class_id, f"{class_id} = {_GLOBAL_CLASS_NAMES[class_id]}") for class_id in class_ids
+    ]
+    if not entries:
+        return
+    heights = [draw.textbbox((0, 0), text, font=style.font)[3] for _, text in entries]
+    widths = [draw.textbbox((0, 0), text, font=style.font)[2] for _, text in entries]
+    swatch = max(heights)
+    row_height = swatch + style.padding
+    panel_width = swatch + style.padding * 3 + max(widths)
+    panel_height = row_height * len(entries) + style.padding
+    draw.rectangle(
+        (style.padding, style.padding, style.padding + panel_width, style.padding + panel_height),
+        fill=_OVERLAY_LEGEND_BACKGROUND,
+    )
+    for row, (class_id, text) in enumerate(entries):
+        top = style.padding * 2 + row * row_height
+        draw.rectangle(
+            (style.padding * 2, top, style.padding * 2 + swatch, top + swatch),
+            fill=_OVERLAY_CLASS_COLOURS[class_id],
+        )
+        draw.text(
+            (style.padding * 3 + swatch, top),
+            text,
+            font=style.font,
+            fill=_OVERLAY_LABEL_TEXT,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -257,7 +366,9 @@ def prepare_archive(
                     "reviewed_on": gate.reviewed_on.isoformat(),
                     "evidence_report_sha256": gate.evidence_report_sha256,
                 },
-                "classes": {"0": "dark_gill", "1": "white_spot"},
+                "classes": {
+                    str(class_id): name for class_id, name in sorted(_GLOBAL_CLASS_NAMES.items())
+                },
                 "split": {"seed": seed, "counts": split_summary},
                 "summary": {
                     "canonical_images": len(planned),
@@ -334,14 +445,26 @@ def generate_evidence_report(
             for index, (image_entry, label_entry, source_class) in enumerate(selected, start=1):
                 rendered_image = Image.open(io.BytesIO(reader.read(image_entry))).convert("RGB")
                 draw = ImageDraw.Draw(rendered_image)
+                style = _OverlayStyle.for_image(rendered_image.width, rendered_image.height)
                 source_boxes = _parse_yolo(reader.read_text(label_entry), source_class)
                 for class_id, x, y, width, height in source_boxes:
                     left = (x - width / 2) * rendered_image.width
                     top = (y - height / 2) * rendered_image.height
                     right = (x + width / 2) * rendered_image.width
                     bottom = (y + height / 2) * rendered_image.height
-                    draw.rectangle((left, top, right, bottom), outline=(255, 0, 0), width=2)
-                    draw.text((left, top), str(class_id), fill=(255, 255, 0))
+                    draw.rectangle(
+                        (left, top, right, bottom),
+                        outline=_OVERLAY_CLASS_COLOURS[class_id],
+                        width=style.outline_width,
+                    )
+                    _draw_class_label(
+                        draw,
+                        style,
+                        class_id,
+                        (left, top),
+                        (rendered_image.width, rendered_image.height),
+                    )
+                _draw_legend(draw, style, sorted({box[0] for box in source_boxes}))
                 relative = Path("overlays") / f"overlay-{index:03d}.jpg"
                 destination = temporary / relative
                 destination.parent.mkdir(parents=True, exist_ok=True)

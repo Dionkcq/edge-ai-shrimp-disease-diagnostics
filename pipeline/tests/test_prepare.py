@@ -7,16 +7,23 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw
 
-from shrimp_pipeline.convert import ConversionError, generate_evidence_report, prepare_archive
+from shrimp_pipeline.convert import (
+    _GLOBAL_CLASS_NAMES,
+    _OVERLAY_CLASS_COLOURS,
+    ConversionError,
+    _OverlayStyle,
+    generate_evidence_report,
+    prepare_archive,
+)
 from shrimp_pipeline.gate import MappingGateError, require_mapping_acceptance
 from shrimp_pipeline.manifest import inventory_archive
 
 
-def _jpeg(colour: tuple[int, int, int]) -> bytes:
+def _jpeg(colour: tuple[int, int, int], size: tuple[int, int] = (32, 24)) -> bytes:
     out = io.BytesIO()
-    Image.new("RGB", (32, 24), colour).save(out, format="JPEG")
+    Image.new("RGB", size, colour).save(out, format="JPEG")
     return out.getvalue()
 
 
@@ -181,3 +188,57 @@ def test_evidence_generation_draws_source_boxes_without_accepting_mapping(tmp_pa
         path = destination / overlay["path"]
         assert path.is_file()
         assert hashlib.sha256(path.read_bytes()).hexdigest() == overlay["sha256"]
+
+
+def test_overlay_style_scales_annotations_with_image_size() -> None:
+    # A fixed-size annotation is unreadable on a full-resolution source photograph, which
+    # would make the human mapping gate impossible to satisfy honestly.
+    large = _OverlayStyle.for_image(2048, 2048)
+    small = _OverlayStyle.for_image(320, 240)
+    assert large.font.size > small.font.size
+    assert large.outline_width > small.outline_width
+    # Text must occupy a visually meaningful share of the shorter edge.
+    assert large.font.size >= 2048 * 0.02
+    # Tiny fixtures must still render rather than collapse to a zero-sized font.
+    assert small.font.size >= 14
+    assert small.outline_width >= 2
+
+
+def _pixels_near(image: Image.Image, colour: tuple[int, int, int], tolerance: int = 40) -> int:
+    raw = image.tobytes()
+    red, green, blue = colour
+    limit = tolerance**2
+    return sum(
+        1
+        for offset in range(0, len(raw), 3)
+        if (raw[offset] - red) ** 2 + (raw[offset + 1] - green) ** 2 + (raw[offset + 2] - blue) ** 2
+        <= limit
+    )
+
+
+def test_evidence_overlay_labels_are_legible_and_class_distinct(tmp_path: Path) -> None:
+    combined = _jpeg((80, 120, 40), size=(640, 640))
+    archive = tmp_path / "large.zip"
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr("Annotated/4. WSSV_BG/images/WSSV_BG-3-img-1.jpg", combined)
+        zipped.writestr(
+            "Annotated/4. WSSV_BG/labels/WSSV_BG-3-img-1.txt",
+            b"0 0.3 0.3 0.1 0.1\n1 0.7 0.7 0.1 0.1\n",
+        )
+    destination = tmp_path / "evidence"
+    report_path = generate_evidence_report(archive, destination, minimum_overlays=1, seed=1)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    overlay = Image.open(destination / report["overlays"][0]["path"]).convert("RGB")
+
+    # Both global classes appear in this image, and each must be drawn in its own visibly
+    # distinct colour so an inversion is obvious to the reviewer.
+    for class_id in _GLOBAL_CLASS_NAMES:
+        painted = _pixels_near(overlay, _OVERLAY_CLASS_COLOURS[class_id])
+        assert painted > 200, f"class {class_id} is not visibly marked: {painted}px"
+
+    # Per-box text stays compact so dense annotations do not hide the tissue under review.
+    style = _OverlayStyle.for_image(640, 640)
+    scratch = ImageDraw.Draw(Image.new("RGB", (640, 640)))
+    digit_width = scratch.textbbox((0, 0), "0", font=style.font)[2]
+    named_width = scratch.textbbox((0, 0), "0 dark_gill", font=style.font)[2]
+    assert digit_width * 3 < named_width
