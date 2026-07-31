@@ -61,7 +61,7 @@ def _payloads(
     prepared_payload = _json(prepared)
     inventory_digest = "d" * 64
     evaluation_common = {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "dataset_descriptor_sha256": "a" * 64,
         "prepared_manifest_sha256": _sha(prepared_payload),
         "dataset_inventory_sha256": inventory_digest,
@@ -69,6 +69,7 @@ def _payloads(
         "split": "test",
         "metrics": {"precision": 0.5, "recall": 0.4, "map50": 0.42, "map50_95": 0.275},
         "per_class_map50_95": [0.21, 0.34],
+        "threshold_matched_metrics": {"precision@0.25": 0.5, "recall@0.25": 0.4},
     }
     evaluation_pytorch = _json({**evaluation_common, "artifact_sha256": "b" * 64})
     evaluation_onnx = _json(
@@ -79,7 +80,7 @@ def _payloads(
     )
     parity = _json(
         {
-            "schema_version": "1.0.0",
+            "schema_version": "1.1.0",
             "passed": True,
             "tolerance": 0.01,
             "maximum_delta": 0.0,
