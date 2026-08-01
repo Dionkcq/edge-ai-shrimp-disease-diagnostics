@@ -110,6 +110,8 @@ Open `http://127.0.0.1:8000`. To use a phone, bind only on a trusted private LAN
 
 The default service is intentionally unavailable for model inference. Installing an arbitrary ONNX file is insufficient: the registry SHA-256, class metadata, tensor shapes and export contract must all validate at startup.
 
+If a maintainer has given you a trained ONNX artifact and you want to run the full screening flow locally, follow [`docs/RUN_WITH_A_MODEL.md`](docs/RUN_WITH_A_MODEL.md). The weights are transferred out of band and are never committed.
+
 ## Dataset preparation
 
 The source-folder class namespaces are independent. The combined-folder interpretation remains provisional and publisher-unconfirmed:
