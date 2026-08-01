@@ -27,7 +27,10 @@ def _sha(payload: bytes) -> str:
 
 
 def _payloads(
-    *, fabricated_acceptance: bool = False, wrong_onnx_digest: bool = False
+    *,
+    fabricated_acceptance: bool = False,
+    wrong_onnx_digest: bool = False,
+    prepared_padding: int = 0,
 ) -> dict[str, bytes]:
     model = b"onnx"
     evidence = _json({"schema_version": "1.0.0", "overlays": 60})
@@ -58,6 +61,14 @@ def _payloads(
     if fabricated_acceptance:
         acceptance = {"mapping_status": "PROVISIONAL_UNCONFIRMED"}
         prepared["mapping_acceptance"] = {"status": "PROVISIONAL_UNCONFIRMED"}
+    if prepared_padding:
+        # Stand in for the per-image records a real prepared manifest carries. Distinct
+        # digests, not repeated filler, so the entry compresses like real content and stays
+        # subject to the compression-ratio guard. Applied before the digest is taken so every
+        # record that binds to the manifest stays consistent.
+        prepared["images"] = [
+            hashlib.sha256(str(index).encode()).hexdigest() for index in range(prepared_padding)
+        ]
     prepared_payload = _json(prepared)
     inventory_digest = "d" * 64
     evaluation_common = {
@@ -118,7 +129,7 @@ def _payloads(
     }
 
 
-def _inputs(root: Path, **options: bool) -> dict[str, Path]:
+def _inputs(root: Path, **options: bool | int) -> dict[str, Path]:
     root.mkdir(parents=True, exist_ok=True)
     files: dict[str, Path] = {}
     for archive_name, payload in _payloads(**options).items():
@@ -212,6 +223,32 @@ def test_build_rejects_oversized_input_before_reading_it(tmp_path: Path) -> None
 
     with pytest.raises(BundleError, match="per-file size"):
         _build(tmp_path / "oversized.zip", inputs)
+
+
+def test_dataset_manifest_may_exceed_one_megabyte_but_other_records_may_not(
+    tmp_path: Path,
+) -> None:
+    """Only the prepared manifest scales with the dataset, so only it gets the larger bound.
+
+    A real 1,149-image prepared manifest is about 1,246 KiB. Records that are fixed-size
+    regardless of dataset size stay bounded at 1 MiB.
+    """
+    # Roughly 20,000 records, comfortably past 1 MiB.
+    inputs = _inputs(tmp_path / "big-manifest", prepared_padding=20_000)
+    assert inputs["records/prepared-manifest.json"].stat().st_size > 1024 * 1024
+    # Accepted: the prepared manifest is allowed to grow with the dataset.
+    bundle = _build(tmp_path / "big.zip", inputs)
+    # And the bundle it produces must still verify, so the same bound applies on both sides.
+    verify_return_bundle(bundle, expected_manifest_sha256=bundle_manifest_sha256(bundle))
+
+    # Rejected: a fixed-size record has no reason to be large.
+    fixed = _inputs(tmp_path / "big-preflight")
+    fixed["records/preflight.json"].write_bytes(b'{"a":"' + b" " * (1024 * 1024 + 1) + b'"}')
+    with pytest.raises(BundleError, match="bounded JSON size limit"):
+        _build(tmp_path / "big-preflight.zip", fixed)
+
+    assert bundle_module._json_bound("records/prepared-manifest.json") == 32 * 1024 * 1024
+    assert bundle_module._json_bound("records/preflight.json") == 1024 * 1024
 
 
 def test_atomic_publication_never_clobbers_existing_destination(tmp_path: Path) -> None:

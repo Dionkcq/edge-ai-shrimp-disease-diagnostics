@@ -33,6 +33,18 @@ _MAX_ENTRIES = 20
 _MAX_FILE_BYTES = 200 * 1024 * 1024
 _MAX_TOTAL_BYTES = 256 * 1024 * 1024
 _MAX_JSON_BYTES = 1024 * 1024
+
+# Every bundled record is fixed-size except the prepared dataset manifest, which carries one
+# entry per canonical image and per duplicate, so it grows with the dataset. Measured on the
+# reference prepared dataset: 1,149 images and 746 duplicates produce 1,246 KiB, about
+# 1.1 KiB per record, most of it the nested source path repeated per entry. Every other
+# record stays far below 1 MiB -- preflight 0.2 KiB, evaluations 1.2 KiB, parity 1.4 KiB,
+# evidence report 38 KiB -- so the tight bound is kept for them and only this one record is
+# allowed to scale. 32 MiB covers roughly thirty thousand images while remaining trivially
+# parseable, and the per-file, total-size, entry-count and compression-ratio limits are
+# unchanged.
+_MAX_DATASET_MANIFEST_BYTES = 32 * 1024 * 1024
+_DATASET_MANIFEST_ENTRY = "records/prepared-manifest.json"
 _MAX_COMPRESSION_RATIO = 200
 _CHUNK_BYTES = 1024 * 1024
 _ALLOWED_COMPRESSION = {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}
@@ -68,10 +80,17 @@ def _json_bytes(document: dict[str, Any]) -> bytes:
     return (json.dumps(document, indent=2, sort_keys=True) + "\n").encode()
 
 
+def _json_bound(name: str) -> int:
+    """Bounded JSON size for one bundle entry, by name."""
+    if name == _DATASET_MANIFEST_ENTRY:
+        return _MAX_DATASET_MANIFEST_BYTES
+    return _MAX_JSON_BYTES
+
+
 def _bounded_file_bytes(path: Path, label: str) -> bytes:
     try:
         size = path.stat().st_size
-        if size > _MAX_JSON_BYTES:
+        if size > _json_bound(label):
             raise BundleError(f"{label} exceeds the bounded JSON size limit")
         return path.read_bytes()
     except OSError as exc:
@@ -226,7 +245,7 @@ def _validate_source_inputs(files: dict[str, Path]) -> int:
         size = path.stat().st_size
         if size > _MAX_FILE_BYTES:
             raise BundleError("a bundle input exceeds the per-file size limit")
-        if name != "model/model.onnx" and size > _MAX_JSON_BYTES:
+        if name != "model/model.onnx" and size > _json_bound(name):
             raise BundleError(f"{name} exceeds the bounded JSON size limit")
         total_input_size += size
     if total_input_size > _MAX_TOTAL_BYTES:
@@ -342,14 +361,17 @@ def _safe_name(name: str) -> bool:
 
 
 def _bounded_zip_payload(archive: zipfile.ZipFile, info: zipfile.ZipInfo, label: str) -> bytes:
-    if info.file_size > _MAX_JSON_BYTES:
+    # The declared size is attacker-controlled, so the read is capped independently and the
+    # result rechecked. Both use the bound for this entry name, not the declared name.
+    bound = _json_bound(info.filename)
+    if info.file_size > bound:
         raise BundleError(f"bundle must contain exactly one bounded {label}")
     try:
         with archive.open(info) as handle:
-            payload = handle.read(_MAX_JSON_BYTES + 1)
+            payload = handle.read(bound + 1)
     except (OSError, RuntimeError, zipfile.BadZipFile) as exc:
         raise BundleError(f"bundle {label} is unreadable") from exc
-    if len(payload) > _MAX_JSON_BYTES:
+    if len(payload) > bound:
         raise BundleError(f"bundle must contain exactly one bounded {label}")
     return payload
 
@@ -397,7 +419,8 @@ def _validate_archive_infos(infos: list[zipfile.ZipInfo]) -> zipfile.ZipInfo:
     if manifest_info.file_size > _MAX_JSON_BYTES:
         raise BundleError("bundle must contain exactly one bounded manifest")
     if any(
-        info.filename != "model/model.onnx" and info.file_size > _MAX_JSON_BYTES for info in infos
+        info.filename != "model/model.onnx" and info.file_size > _json_bound(info.filename)
+        for info in infos
     ):
         raise BundleError("bundle JSON or metadata entry exceeds its bounded size limit")
     if any(
