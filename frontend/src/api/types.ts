@@ -56,7 +56,7 @@ export type ScreeningResult = {
     provider: Provider
     model_id: string | null
     version: string | null
-    output_layout: 'ultralytics_v8_detect_v1' | null
+    output_layout: 'ultralytics_v8_detect_v1' | 'custom_yolo_anchor_v1' | null
     class_names: Record<string, string>
     dataset_mapping_status: 'PROVISIONAL_UNCONFIRMED' | 'AUTHOR_CONFIRMED' | 'NOT_APPLICABLE'
     is_demonstration_data: boolean

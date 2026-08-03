@@ -6,8 +6,15 @@ from typing import Any
 
 import pytest
 
+from shrimp_training.anchors import AnchorSet
 from shrimp_training.config import ProfileError, load_profile
+from shrimp_training.model import STRIDES
 from shrimp_training.runner import TrainingError, train_with_fallback
+
+
+def _anchors() -> AnchorSet:
+    boxes = tuple((10.0 * (i + 1), 10.0 * (i + 1)) for i in range(9))
+    return AnchorSet(boxes=boxes, strides=STRIDES, seed=20260730, source_box_count=100)
 
 
 def _profile(path: Path, **overrides: object) -> Path:
@@ -24,6 +31,8 @@ def _profile(path: Path, **overrides: object) -> Path:
         "deterministic": True,
         "seed": 20260730,
         "cache": False,
+        "learning_rate": 0.01,
+        "weight_decay": 0.0005,
     }
     document.update(overrides)
     path.write_text(json.dumps(document), encoding="utf-8")
@@ -69,19 +78,17 @@ class _FakeModel:
 
 def test_train_retries_only_cuda_oom_and_returns_existing_best_checkpoint(tmp_path: Path) -> None:
     profile = load_profile(_profile(tmp_path / "profile.json"))
-    weights = tmp_path / "initial.pt"
-    weights.write_bytes(b"initial")
-    dataset = tmp_path / "dataset.yaml"
-    dataset.write_text("names: {}\n", encoding="utf-8")
+    dataset_root = tmp_path / "prepared"
+    dataset_root.mkdir()
     output = tmp_path / "runs"
     attempts: list[dict[str, Any]] = []
 
     result = train_with_fallback(
         profile,
-        weights,
-        dataset,
+        dataset_root,
         output,
-        model_factory=lambda _: _FakeModel(attempts, output, unrelated=False),
+        anchors=_anchors(),
+        model_factory=lambda: _FakeModel(attempts, output, unrelated=False),
     )
 
     assert [attempt["batch"] for attempt in attempts] == [4, 2]
@@ -89,30 +96,29 @@ def test_train_retries_only_cuda_oom_and_returns_existing_best_checkpoint(tmp_pa
     assert result.best_checkpoint.read_bytes() == b"checkpoint"
     assert all(attempt["imgsz"] == 640 for attempt in attempts)
     assert all(attempt["deterministic"] is True for attempt in attempts)
+    assert all(attempt["anchors"] is not None for attempt in attempts)
 
 
 def test_train_does_not_hide_non_oom_errors(tmp_path: Path) -> None:
     profile = load_profile(_profile(tmp_path / "profile.json"))
-    weights = tmp_path / "initial.pt"
-    weights.write_bytes(b"initial")
-    dataset = tmp_path / "dataset.yaml"
-    dataset.write_text("names: {}\n", encoding="utf-8")
+    dataset_root = tmp_path / "prepared"
+    dataset_root.mkdir()
 
     with pytest.raises(RuntimeError, match="dataset parser failed"):
         train_with_fallback(
             profile,
-            weights,
-            dataset,
+            dataset_root,
             tmp_path / "runs",
-            model_factory=lambda _: _FakeModel([], tmp_path / "runs", unrelated=True),
+            anchors=_anchors(),
+            model_factory=lambda: _FakeModel([], tmp_path / "runs", unrelated=True),
         )
 
-    weights.unlink()
-    with pytest.raises(TrainingError, match="initial weights"):
+    missing_dataset = tmp_path / "absent-prepared"
+    with pytest.raises(TrainingError, match="prepared dataset root"):
         train_with_fallback(
             profile,
-            weights,
-            dataset,
+            missing_dataset,
             tmp_path / "runs-2",
-            model_factory=lambda _: _FakeModel([], tmp_path / "runs-2", unrelated=False),
+            anchors=_anchors(),
+            model_factory=lambda: _FakeModel([], tmp_path / "runs-2", unrelated=False),
         )

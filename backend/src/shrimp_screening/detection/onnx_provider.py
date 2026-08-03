@@ -32,8 +32,14 @@ from typing import Any
 import numpy as np
 import onnxruntime as ort
 
-from shrimp_screening.contracts.enums import ProviderKind
-from shrimp_screening.detection.decode import decode_ultralytics_v8, expected_anchor_count
+from shrimp_screening.contracts.enums import OutputLayout, ProviderKind
+from shrimp_screening.detection.decode import (
+    CUSTOM_YOLO_ANCHORS_PER_SCALE,
+    CUSTOM_YOLO_STRIDES,
+    decode_custom_yolo_anchor_v1,
+    decode_ultralytics_v8,
+    expected_anchor_count,
+)
 from shrimp_screening.detection.letterbox import letterbox_image
 from shrimp_screening.detection.protocol import Detection, DetectorMetadata
 from shrimp_screening.detection.registry import ModelRegistry, RegisteredModel, sha256_of
@@ -110,19 +116,37 @@ def _validate_session(session: ort.InferenceSession, entry: RegisteredModel) -> 
         f"output shape {outputs[0].shape} is not a static rank-3 tensor",
     )
     assert output_shape is not None  # narrowed by the check above
-    channels = 4 + len(entry.class_names)
-    _require(
-        output_shape[0] == 1 and output_shape[1] == channels,
-        f"output shape {output_shape} is not (1, {channels}, anchors); a "
-        f"(1, anchors, {channels}) tensor is the transposed YOLOv5 layout and "
-        "(1, max_det, 6) is an nms=True export",
-    )
-    anchors = expected_anchor_count(size)
-    _require(
-        output_shape[2] == anchors,
-        f"output declares {output_shape[2]} anchors; a three-scale detect head at "
-        f"{size} emits {anchors}",
-    )
+
+    if entry.output_layout is OutputLayout.CUSTOM_YOLO_ANCHOR_V1:
+        channels = 5 + len(entry.class_names)
+        anchor_positions = CUSTOM_YOLO_ANCHORS_PER_SCALE * expected_anchor_count(
+            size, CUSTOM_YOLO_STRIDES
+        )
+        _require(
+            output_shape[0] == 1 and output_shape[1] == channels,
+            f"output shape {output_shape} is not (1, {channels}, anchors) for "
+            "custom_yolo_anchor_v1",
+        )
+        _require(
+            output_shape[2] == anchor_positions,
+            f"output declares {output_shape[2]} anchor positions; a 3-scale "
+            f"anchor-based head with {CUSTOM_YOLO_ANCHORS_PER_SCALE} anchors/scale at "
+            f"{size} emits {anchor_positions}",
+        )
+    else:
+        channels = 4 + len(entry.class_names)
+        _require(
+            output_shape[0] == 1 and output_shape[1] == channels,
+            f"output shape {output_shape} is not (1, {channels}, anchors); a "
+            f"(1, anchors, {channels}) tensor is the transposed YOLOv5 layout and "
+            "(1, max_det, 6) is an nms=True export",
+        )
+        anchors_count = expected_anchor_count(size)
+        _require(
+            output_shape[2] == anchors_count,
+            f"output declares {output_shape[2]} anchors; a three-scale detect head at "
+            f"{size} emits {anchors_count}",
+        )
 
     metadata = session.get_modelmeta().custom_metadata_map or {}
     _require("names" in metadata, "the model carries no 'names' metadata")
@@ -205,6 +229,16 @@ class OnnxProvider:
     def infer(self, image: np.ndarray) -> list[Detection]:
         batch, transform = letterbox_image(image, self._entry.input_size)
         raw = self._session.run(None, {self._input_name: batch})[0]
+        if self._entry.output_layout is OutputLayout.CUSTOM_YOLO_ANCHOR_V1:
+            return decode_custom_yolo_anchor_v1(
+                np.asarray(raw),
+                self._entry.class_names,
+                transform,
+                self._entry.anchors,
+                score_threshold=self._score_threshold,
+                iou_threshold=self._iou_threshold,
+                max_detections=self._max_detections,
+            )
         return decode_ultralytics_v8(
             np.asarray(raw),
             self._entry.class_names,

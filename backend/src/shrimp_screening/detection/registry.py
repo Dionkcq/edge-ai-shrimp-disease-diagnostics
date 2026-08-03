@@ -30,6 +30,7 @@ _ENTRY_FIELDS = {
     "class_names",
     "opset",
     "output_layout",
+    "anchors",
     "dataset_mapping_status",
     "artifact_license",
     "training_toolchain",
@@ -41,7 +42,14 @@ _TOOLCHAIN_LICENSES = {
         "LicenseRef-Ultralytics-Enterprise",
     },
     "synthetic-onnx-graph": {"AGPL-3.0-or-later"},
+    "custom-pytorch-yolo": {"AGPL-3.0-or-later"},
 }
+#: Anchors per detection scale for CUSTOM_YOLO_ANCHOR_V1 (3 scales x 3 anchors).
+#: Mirrors ``training/src/shrimp_training/anchors.py::ANCHORS_PER_SCALE`` -- kept
+#: as a plain constant here rather than imported, since the backend never imports
+#: the (AGPL, separately locked) training package.
+_ANCHORS_PER_SCALE = 3
+_ANCHOR_SCALES = 3
 
 
 class RegistryError(RuntimeError):
@@ -60,6 +68,7 @@ class RegisteredModel:
     class_names: dict[int, str]
     opset: int
     output_layout: OutputLayout
+    anchors: tuple[tuple[float, float], ...]
     dataset_mapping_status: DatasetMappingStatus
     artifact_license: str
     training_toolchain: str
@@ -108,6 +117,32 @@ def _parse_class_names(raw: Any) -> dict[int, str]:
     return parsed
 
 
+def _parse_anchors(raw: Any, output_layout: OutputLayout) -> tuple[tuple[float, float], ...]:
+    if not isinstance(raw, list):
+        raise RegistryError("anchors must be a list of [width, height] pairs")
+    parsed: list[tuple[float, float]] = []
+    for pair in raw:
+        if (
+            not isinstance(pair, list | tuple)
+            or len(pair) != 2
+            or any(isinstance(value, bool) or not isinstance(value, int | float) for value in pair)
+        ):
+            raise RegistryError("each anchors entry must be a [width, height] numeric pair")
+        width, height = float(pair[0]), float(pair[1])
+        if width <= 0 or height <= 0:
+            raise RegistryError("anchor width and height must be positive")
+        parsed.append((width, height))
+    if output_layout is OutputLayout.CUSTOM_YOLO_ANCHOR_V1:
+        expected = _ANCHORS_PER_SCALE * _ANCHOR_SCALES
+        if len(parsed) != expected:
+            raise RegistryError(
+                f"{output_layout.value} requires exactly {expected} anchors, got {len(parsed)}"
+            )
+    elif parsed:
+        raise RegistryError(f"{output_layout.value} does not use anchors; anchors must be []")
+    return tuple(parsed)
+
+
 def _parse_model(entry: Any) -> RegisteredModel:
     if not isinstance(entry, dict):
         raise RegistryError("each registry entry must be an object")
@@ -152,6 +187,7 @@ def _parse_model(entry: Any) -> RegisteredModel:
             raise RegistryError(
                 "artifact_license is inconsistent with the registered training_toolchain"
             )
+        output_layout = OutputLayout(entry["output_layout"])
         return RegisteredModel(
             model_id=strings["model_id"],
             version=strings["version"],
@@ -160,7 +196,8 @@ def _parse_model(entry: Any) -> RegisteredModel:
             input_size=input_size,
             class_names=_parse_class_names(entry["class_names"]),
             opset=opset_raw,
-            output_layout=OutputLayout(entry["output_layout"]),
+            output_layout=output_layout,
+            anchors=_parse_anchors(entry["anchors"], output_layout),
             dataset_mapping_status=DatasetMappingStatus(entry["dataset_mapping_status"]),
             artifact_license=artifact_license,
             training_toolchain=toolchain,

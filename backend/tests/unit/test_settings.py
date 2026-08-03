@@ -13,6 +13,7 @@ def test_the_default_is_the_safe_one() -> None:
     assert settings.provider == "unavailable"
     assert settings.env == "dev"
     assert settings.max_upload_bytes == 12 * 1024 * 1024
+    assert settings.llm_enabled is False
 
 
 @pytest.mark.parametrize("environment", ["demo", "production"])
@@ -47,6 +48,25 @@ def test_settings_are_read_from_the_shrimp_prefix(monkeypatch: pytest.MonkeyPatc
 def test_an_absurd_upload_cap_is_rejected() -> None:
     with pytest.raises(ValidationError):
         Settings(max_upload_bytes=1024 * 1024 * 1024)
+
+
+def test_llm_settings_are_read_from_the_shrimp_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SHRIMP_LLM_ENABLED", "true")
+    monkeypatch.setenv("SHRIMP_LLM_BASE_URL", "http://127.0.0.1:12345")
+    monkeypatch.setenv("SHRIMP_LLM_MODEL", "qwen2.5:7b-instruct-q4_0")
+    monkeypatch.setenv("SHRIMP_LLM_TIMEOUT_SECONDS", "10")
+    settings = load_settings()
+    assert settings.llm_enabled is True
+    assert settings.llm_base_url == "http://127.0.0.1:12345"
+    assert settings.llm_model == "qwen2.5:7b-instruct-q4_0"
+    assert settings.llm_timeout_seconds == 10.0
+
+
+def test_an_absurd_llm_timeout_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Settings(llm_timeout_seconds=0.0)
+    with pytest.raises(ValidationError):
+        Settings(llm_timeout_seconds=1000.0)
 
 
 def test_settings_are_immutable_once_loaded() -> None:

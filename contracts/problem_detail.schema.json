@@ -9,7 +9,8 @@
         "UNDECODABLE_IMAGE",
         "SERVICE_BUSY",
         "NOT_FOUND",
-        "INTERNAL_ERROR"
+        "INTERNAL_ERROR",
+        "ADVICE_UNAVAILABLE"
       ],
       "title": "ProblemCode",
       "type": "string"

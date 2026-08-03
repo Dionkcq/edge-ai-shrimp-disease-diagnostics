@@ -110,6 +110,32 @@ Open `http://127.0.0.1:8000`. To use a phone, bind only on a trusted private LAN
 
 The default service is intentionally unavailable for model inference. Installing an arbitrary ONNX file is insufficient: the registry SHA-256, class metadata, tensor shapes and export contract must all validate at startup.
 
+## Optional: local generated advice
+
+`GET /api/v1/advice/{decision}` expands the cited guidance above into a longer,
+farmer-facing explanation and action plan, using a local
+[Ollama](https://ollama.com/) model. It is entirely optional, off by default, and
+never consulted for the screening decision itself:
+
+- Disabled unless `SHRIMP_LLM_ENABLED=true`, in which case the endpoint answers
+  `404` exactly as if it did not exist.
+- Talks only to a local Ollama server (`SHRIMP_LLM_BASE_URL`, default
+  `http://127.0.0.1:11434`) running `SHRIMP_LLM_MODEL` (default
+  `qwen2.5:7b-instruct-q4_0`). No photograph, decision or pond record ever
+  leaves the machine.
+- Every response is grounded in the same cited guidance text as
+  `GET /api/v1/guidance/{decision}` and is labelled `AI_GENERATED_NOT_REVIEWED`.
+  It is scanned with the same lexicon the guidance corpus itself must pass
+  (`backend/src/shrimp_screening/guidance/lexicon.py`) before it can reach a
+  response: a claim of health, a diagnosis, or a named medication/dose fails
+  closed as `503 ADVICE_UNAVAILABLE` rather than reaching the client.
+- If Ollama is not running, unreachable, or the model is not pulled, the
+  endpoint answers `503 ADVICE_UNAVAILABLE` with `Retry-After`, the same way the
+  rest of this API fails explicitly rather than degrading silently.
+
+To use it locally: install Ollama, `ollama pull qwen2.5:7b-instruct-q4_0`, then
+set `SHRIMP_LLM_ENABLED=true` before starting the FastAPI service.
+
 ## Dataset preparation
 
 The source-folder class namespaces are independent. The combined-folder interpretation remains provisional and publisher-unconfirmed:

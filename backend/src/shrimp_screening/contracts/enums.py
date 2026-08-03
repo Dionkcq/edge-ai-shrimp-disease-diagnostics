@@ -93,6 +93,9 @@ class OutputLayout(StrEnum):
     """ONNX output contract. The backend depends on this, not on any trainer."""
 
     ULTRALYTICS_V8_DETECT_V1 = "ultralytics_v8_detect_v1"
+    #: A from-scratch, anchor-based, 3-scale detect head (objectness channel
+    #: present). See ``detection/decode.py::decode_custom_yolo_anchor_v1``.
+    CUSTOM_YOLO_ANCHOR_V1 = "custom_yolo_anchor_v1"
 
 
 @unique
@@ -130,3 +133,4 @@ class ProblemCode(StrEnum):
     SERVICE_BUSY = "SERVICE_BUSY"
     NOT_FOUND = "NOT_FOUND"
     INTERNAL_ERROR = "INTERNAL_ERROR"
+    ADVICE_UNAVAILABLE = "ADVICE_UNAVAILABLE"

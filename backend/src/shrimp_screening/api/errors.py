@@ -25,6 +25,7 @@ _TITLES: dict[ProblemCode, str] = {
     ProblemCode.SERVICE_BUSY: "Service busy",
     ProblemCode.NOT_FOUND: "Not found",
     ProblemCode.INTERNAL_ERROR: "Internal error",
+    ProblemCode.ADVICE_UNAVAILABLE: "Advice unavailable",
 }
 
 

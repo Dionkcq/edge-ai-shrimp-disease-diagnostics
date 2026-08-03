@@ -15,6 +15,7 @@ from starlette.requests import Request
 
 from shrimp_screening.detection.protocol import MarkerDetector
 from shrimp_screening.guidance.store import GuidanceCorpus
+from shrimp_screening.llm.client import OllamaClient
 from shrimp_screening.policy.loader import DecisionPolicy, QualityPolicy
 from shrimp_screening.settings import Settings
 
@@ -35,6 +36,9 @@ class AppResources:
     #: faster than two competing ones, and an unbounded queue turns a slow request
     #: into a browser tab that never resolves.
     inference_gate: asyncio.Semaphore
+    #: ``None`` unless ``settings.llm_enabled`` -- absence, not a flag to check
+    #: separately, is what the advice route treats as "feature not available".
+    llm_client: OllamaClient | None
 
 
 def get_resources(request: Request) -> AppResources:

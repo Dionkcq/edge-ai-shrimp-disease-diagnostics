@@ -19,6 +19,7 @@ CI. That is deliberate: a generated artifact that can drift is not a contract.
 | `screening_result.schema.json` | `contracts/screening.py` | `200` body of `POST /api/v1/screenings` |
 | `problem_detail.schema.json` | `contracts/problem.py` | every `4xx`/`5xx` body, `application/problem+json` |
 | `guidance_document.schema.json` | `contracts/guidance.py` | `200` body of `GET /api/v1/guidance/{decision}` |
+| `advice_document.schema.json` | `contracts/advice.py` | `200` body of `GET /api/v1/advice/{decision}` (optional, off by default) |
 
 ## Versioning rules
 
@@ -80,6 +81,7 @@ contract break; `code` and `status` may not.
 | `SERVICE_BUSY` | 503 | inference queue timed out; carries `Retry-After` |
 | `NOT_FOUND` | 404 | unknown decision or route |
 | `INTERNAL_ERROR` | 500 | anything unhandled; the cause is never echoed |
+| `ADVICE_UNAVAILABLE` | 503 | `GET /api/v1/advice/{decision}`: Ollama unreachable, or its answer failed the safety scan; carries `Retry-After` |
 
 `detail` is a fixed string chosen at the raise site. It never contains anything
 derived from the request body, the filename, the headers or EXIF.

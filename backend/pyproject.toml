@@ -21,6 +21,10 @@ dependencies = [
     "pillow>=11.0",
     "numpy>=2.1",
     "onnxruntime>=1.20",
+    # Local-only HTTP client for the optional Ollama-backed advice endpoint. BSD-3-Clause.
+    # httpx2 (not httpx) because starlette's own TestClient dependency already pins the
+    # httpx 2.x line under this name; using it here too avoids a second HTTP stack.
+    "httpx2>=2.9",
 ]
 
 [project.scripts]

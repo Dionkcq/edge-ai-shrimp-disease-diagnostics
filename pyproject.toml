@@ -88,6 +88,17 @@ ignore = [
 # Return-bundle verification enumerates independent archive, path, size, schema, hash,
 # and registry invariants. Keeping them in one fail-closed verification pass is intentional.
 "training/src/shrimp_training/bundle.py" = ["PLR0912"]
+# HSV-jitter and image-order shuffling are deliberately a seeded `random.Random` for
+# reproducible training runs; nothing security-relevant depends on it.
+"training/src/shrimp_training/data.py" = ["S311"]
+# The multi-scale loss assignment (one target -> exactly one globally best-matching
+# scale/anchor/cell) is one fail-closed invariant; splitting it across functions would
+# scatter it rather than keep it visibly in one place.
+"training/src/shrimp_training/loss.py" = ["PLR0915"]
+# `.train()` is one linear training loop (batch/epoch iteration, AMP, gradient
+# clipping, checkpointing); splitting it would scatter one control flow across
+# several functions for no readability gain.
+"training/src/shrimp_training/adapter.py" = ["PLR0915"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
@@ -100,6 +111,12 @@ known-first-party = ["tests"]
 
 # ---------------------------------------------------------------------------
 # mypy -- strict on backend source, which is the code that ships
+#
+# training/src is checked separately, from training's own venv
+# (`cd training && uv run mypy`): it depends on torch, which this root workspace's
+# venv deliberately never installs (see scripts/check_no_agpl_in_runtime.py), and
+# training's own venv gives mypy real PyTorch types instead of a blanket
+# `ignore_missing_imports`.
 # ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.13"
@@ -109,8 +126,8 @@ warn_unused_ignores = true
 disallow_any_unimported = true
 show_error_codes = true
 pretty = true
-mypy_path = ["backend/src", "pipeline/src", "training/src"]
-files = ["backend/src", "pipeline/src", "training/src", "scripts"]
+mypy_path = ["backend/src", "pipeline/src"]
+files = ["backend/src", "pipeline/src", "scripts"]
 
 [[tool.mypy.overrides]]
 module = ["onnxruntime.*", "onnx.*"]

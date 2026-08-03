@@ -60,6 +60,17 @@ class Settings(BaseSettings):
     #: Advertised in the Retry-After header of a 503 SERVICE_BUSY response.
     retry_after_seconds: int = Field(default=2, ge=1, le=120)
 
+    #: Off by default: a clean checkout has no local Ollama server either, and this
+    #: feature is additive advice, never the screening decision itself.
+    llm_enabled: bool = False
+    #: A local Ollama server. Never a remote host by default -- this project ships
+    #: no configuration that would send a photograph, a decision or a pond record
+    #: off the machine it runs on.
+    llm_base_url: str = "http://127.0.0.1:11434"
+    llm_model: str = "qwen2.5:7b-instruct-q4_0"
+    #: Generous: a quantized 7B model on modest hardware can take tens of seconds.
+    llm_timeout_seconds: float = Field(default=45.0, gt=0.0, le=300.0)
+
     @model_validator(mode="after")
     def _audience_environments_require_a_real_model(self) -> Self:
         if self.env in AUDIENCE_ENVIRONMENTS and self.provider != "onnx":

@@ -21,6 +21,8 @@ _FIELDS = {
     "deterministic",
     "seed",
     "cache",
+    "learning_rate",
+    "weight_decay",
 }
 
 
@@ -41,6 +43,8 @@ class TrainingProfile:
     deterministic: bool
     seed: int
     cache: bool
+    learning_rate: float
+    weight_decay: float
 
 
 def _integer(document: dict[str, Any], field: str, *, minimum: int) -> int:
@@ -55,6 +59,17 @@ def _boolean(document: dict[str, Any], field: str) -> bool:
     if type(value) is not bool:
         raise ProfileError(f"{field} must be a boolean")
     return value
+
+
+def _float(document: dict[str, Any], field: str, *, minimum: float, inclusive: bool) -> float:
+    value = document.get(field)
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise ProfileError(f"{field} must be a number")
+    invalid = value < minimum if inclusive else value <= minimum
+    if invalid:
+        description = "a non-negative number" if inclusive else "a positive number"
+        raise ProfileError(f"{field} must be {description}")
+    return float(value)
 
 
 def load_profile(path: Path) -> TrainingProfile:
@@ -102,4 +117,6 @@ def load_profile(path: Path) -> TrainingProfile:
         deterministic=_boolean(raw, "deterministic"),
         seed=_integer(raw, "seed", minimum=0),
         cache=_boolean(raw, "cache"),
+        learning_rate=_float(raw, "learning_rate", minimum=0, inclusive=False),
+        weight_decay=_float(raw, "weight_decay", minimum=0, inclusive=True),
     )

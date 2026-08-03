@@ -8,9 +8,9 @@ dependencies = [
     "numpy==2.2.6",
     "onnx==1.22.0",
     "onnxruntime==1.28.0",
+    "pillow>=11.0,<12",
     "torch==2.5.1",
     "torchvision==0.20.1",
-    "ultralytics==8.4.112",
 ]
 
 [project.scripts]
@@ -36,4 +36,34 @@ torchvision = { index = "pytorch-cu118" }
 test = [
     "pytest>=8.4,<10",
     "ruff>=0.14,<0.17",
+    "mypy>=1.18",
 ]
+
+# ---------------------------------------------------------------------------
+# mypy -- checked from this package's own venv, not the root workspace's. Root's
+# venv (backend + pipeline) deliberately never installs torch (see
+# scripts/check_no_agpl_in_runtime.py); this package's real, isolated torch
+# install gives mypy actual PyTorch types instead of a blanket `ignore_missing_imports`.
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+disallow_any_unimported = true
+show_error_codes = true
+pretty = true
+mypy_path = ["src"]
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["onnxruntime.*", "onnx.*"]
+ignore_missing_imports = true
+
+# onnxruntime 1.28 ships no `py.typed`, so `ort.InferenceSession` is unavoidably
+# `Any` here -- mirrors the same exemption for
+# `shrimp_screening.detection.onnx_provider` on the runtime side, confined to the
+# one module in this package allowed to import onnxruntime at all.
+[[tool.mypy.overrides]]
+module = "shrimp_training.adapter"
+disallow_any_unimported = false

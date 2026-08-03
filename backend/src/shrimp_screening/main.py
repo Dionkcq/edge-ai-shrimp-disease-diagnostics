@@ -24,7 +24,7 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
-from shrimp_screening.api import routes_guidance, routes_health, routes_screening
+from shrimp_screening.api import routes_advice, routes_guidance, routes_health, routes_screening
 from shrimp_screening.api.dependencies import RESOURCES_ATTRIBUTE, AppResources
 from shrimp_screening.api.errors import (
     ApiProblemError,
@@ -38,6 +38,7 @@ from shrimp_screening.detection.protocol import MarkerDetector
 from shrimp_screening.detection.providers import build_detector
 from shrimp_screening.guidance.store import load_guidance
 from shrimp_screening.limitations import load_limitations
+from shrimp_screening.llm.client import OllamaClient
 from shrimp_screening.paths import repository_root
 from shrimp_screening.policy.loader import load_decision_policy, load_quality_policy
 from shrimp_screening.settings import Settings, load_settings
@@ -57,15 +58,27 @@ _logger = logging.getLogger("shrimp_screening")
 _NON_SPA_PREFIXES = ("api", "assets", "livez", "readyz")
 
 
+def _build_llm_client(settings: Settings) -> OllamaClient | None:
+    if not settings.llm_enabled:
+        return None
+    return OllamaClient(
+        base_url=settings.llm_base_url,
+        model=settings.llm_model,
+        timeout_seconds=settings.llm_timeout_seconds,
+    )
+
+
 def build_resources(
     settings: Settings | None = None,
     *,
     detector: MarkerDetector | None = None,
+    llm_client: OllamaClient | None = None,
 ) -> AppResources:
     """Load and validate every piece of process-wide state.
 
-    ``detector`` is injectable so a test can exercise a provider without reaching
-    through an environment variable. Nothing else about the wiring changes.
+    ``detector`` and ``llm_client`` are injectable so a test can exercise a
+    provider, or a fake local model, without reaching through an environment
+    variable or a real network call. Nothing else about the wiring changes.
     """
     resolved = settings if settings is not None else load_settings()
     quality_policy = load_quality_policy()
@@ -81,6 +94,7 @@ def build_resources(
         detector=detector if detector is not None else build_detector(resolved, decision_policy),
         guidance=guidance,
         inference_gate=asyncio.Semaphore(resolved.max_concurrent_inferences),
+        llm_client=llm_client if llm_client is not None else _build_llm_client(resolved),
     )
 
 
@@ -122,10 +136,11 @@ def create_app(
     settings: Settings | None = None,
     *,
     detector: MarkerDetector | None = None,
+    llm_client: OllamaClient | None = None,
     frontend_dir: Path | None = None,
 ) -> FastAPI:
     """Build the ASGI application."""
-    resources = build_resources(settings, detector=detector)
+    resources = build_resources(settings, detector=detector, llm_client=llm_client)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -159,6 +174,7 @@ def create_app(
 
     app.include_router(routes_health.router)
     app.include_router(routes_guidance.router)
+    app.include_router(routes_advice.router)
     app.include_router(routes_screening.router)
     _mount_frontend(
         app,

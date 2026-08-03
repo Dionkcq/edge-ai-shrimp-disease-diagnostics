@@ -35,6 +35,7 @@ VALID_ENTRY: dict[str, Any] = {
     "class_names": {"0": "dark_gill", "1": "white_spot"},
     "opset": 17,
     "output_layout": "ultralytics_v8_detect_v1",
+    "anchors": [],
     "dataset_mapping_status": "PROVISIONAL_UNCONFIRMED",
     "artifact_license": "AGPL-3.0-or-later",
     "training_toolchain": "ultralytics 8.3",
@@ -348,4 +349,64 @@ def test_registry_rejects_unknown_entry_fields(tmp_path: Path) -> None:
         tmp_path,
         {"models": [VALID_ENTRY | {"unreviewed": True}]},
         "unknown fields",
+    )
+
+
+# ---------------------------------------------------------------------------
+# `anchors`: only meaningful for the anchor-based custom head.
+# ---------------------------------------------------------------------------
+
+CUSTOM_ANCHOR_ENTRY: dict[str, Any] = VALID_ENTRY | {
+    "model_id": "shrimp-marker-custom",
+    "filename": "shrimp-marker-custom-v1.onnx",
+    "sha256": "c" * 64,
+    "output_layout": "custom_yolo_anchor_v1",
+    "anchors": [[10.0, 10.0]] * 9,
+    "training_toolchain": "custom-pytorch-yolo torch 2.5.1",
+}
+
+
+def test_a_custom_yolo_entry_with_nine_anchors_is_accepted(tmp_path: Path) -> None:
+    entry = _load_entry(tmp_path, **CUSTOM_ANCHOR_ENTRY)
+    assert entry.output_layout is OutputLayout.CUSTOM_YOLO_ANCHOR_V1
+    assert entry.anchors == ((10.0, 10.0),) * 9
+
+
+@pytest.mark.parametrize(
+    "anchors",
+    [
+        pytest.param([[10.0, 10.0]] * 8, id="too-few"),
+        pytest.param([[10.0, 10.0]] * 10, id="too-many"),
+        pytest.param([], id="empty"),
+    ],
+)
+def test_a_custom_yolo_entry_without_exactly_nine_anchors_is_refused(
+    tmp_path: Path, anchors: object
+) -> None:
+    _expect_error(
+        tmp_path, {"models": [CUSTOM_ANCHOR_ENTRY | {"anchors": anchors}]}, "requires exactly 9"
+    )
+
+
+def test_a_non_empty_anchors_list_on_the_ultralytics_layout_is_refused(tmp_path: Path) -> None:
+    _expect_error(
+        tmp_path,
+        {"models": [VALID_ENTRY | {"anchors": [[10.0, 10.0]]}]},
+        "does not use anchors",
+    )
+
+
+@pytest.mark.parametrize(
+    "anchors",
+    [
+        pytest.param("not-a-list", id="not-a-list"),
+        pytest.param([[10.0]], id="wrong-arity"),
+        pytest.param([[10.0, -1.0]] * 9, id="non-positive"),
+        pytest.param([[10.0, "x"]] * 9, id="non-numeric"),
+        pytest.param([[10.0, True]] * 9, id="bool-not-number"),
+    ],
+)
+def test_a_malformed_anchors_entry_is_refused(tmp_path: Path, anchors: object) -> None:
+    _expect_error(
+        tmp_path, {"models": [CUSTOM_ANCHOR_ENTRY | {"anchors": anchors}]}, "anchor|numeric pair"
     )

@@ -554,6 +554,7 @@ version = "0.1.0"
 source = { editable = "backend" }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx2" },
     { name = "numpy" },
     { name = "onnxruntime" },
     { name = "pillow" },
@@ -566,6 +567,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
+    { name = "httpx2", specifier = ">=2.9" },
     { name = "numpy", specifier = ">=2.1" },
     { name = "onnxruntime", specifier = ">=1.20" },
     { name = "pillow", specifier = ">=11.0" },

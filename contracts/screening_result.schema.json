@@ -257,7 +257,8 @@
     "OutputLayout": {
       "description": "ONNX output contract. The backend depends on this, not on any trainer.",
       "enum": [
-        "ultralytics_v8_detect_v1"
+        "ultralytics_v8_detect_v1",
+        "custom_yolo_anchor_v1"
       ],
       "title": "OutputLayout",
       "type": "string"
