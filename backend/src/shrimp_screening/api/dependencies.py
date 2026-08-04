@@ -13,6 +13,7 @@ from typing import cast
 
 from starlette.requests import Request
 
+from shrimp_screening.ai.memory import ConversationMemory
 from shrimp_screening.detection.protocol import MarkerDetector
 from shrimp_screening.guidance.store import GuidanceCorpus
 from shrimp_screening.llm.client import OllamaClient
@@ -39,6 +40,7 @@ class AppResources:
     #: ``None`` unless ``settings.llm_enabled`` -- absence, not a flag to check
     #: separately, is what the advice route treats as "feature not available".
     llm_client: OllamaClient | None
+    chat_memory: ConversationMemory
 
 
 def get_resources(request: Request) -> AppResources:

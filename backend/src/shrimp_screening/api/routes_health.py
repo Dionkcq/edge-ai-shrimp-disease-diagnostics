@@ -68,6 +68,7 @@ class MetaResponse(BaseModel):
     #: that endpoint answers 404, and a client must not offer the feature at all
     #: rather than discovering it by asking and failing.
     advice_available: bool
+    chat_available: bool
     offline: Literal[True] = True
 
 
@@ -106,4 +107,5 @@ def meta(resources: Resources) -> MetaResponse:
         guidance_review_status=resources.guidance.review_status,
         max_upload_bytes=resources.settings.max_upload_bytes,
         advice_available=resources.llm_client is not None,
+        chat_available=resources.llm_client is not None,
     )

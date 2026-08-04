@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ApiError, getAdvice, getGuidance, getMeta, screenImage } from '../api/client'
 import type { Advice, Guidance, Meta, ProblemCode, ScreeningResult } from '../api/types'
 import { PrivacyPanel } from '../components/PrivacyPanel'
+import { ChatPanel } from '../features/chat/ChatPanel'
 import { CapturePanel } from '../features/capture/CapturePanel'
 import type { AdviceState } from '../features/advice/AdvicePanel'
 import { ResultPanel } from '../features/result/ResultPanel'
@@ -249,6 +250,7 @@ export function App() {
           onSubmit={() => void submit()}
           onCancel={cancel}
         />
+        <ChatPanel available={meta?.chat_available ?? false} file={file} />
         {error && file && !busy && (
           <div className="retry-row">
             <button className="button button-secondary" type="button" onClick={() => void submit()}>

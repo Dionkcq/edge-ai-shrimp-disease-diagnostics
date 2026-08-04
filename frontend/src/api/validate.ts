@@ -1,5 +1,5 @@
 import { DECISIONS } from '../domain/decisions'
-import type { Advice, Guidance, Meta, Problem, ScreeningResult } from './types'
+import type { Advice, ChatResponse, Guidance, Meta, Problem, ScreeningResult } from './types'
 
 const decisionSet = new Set<string>([...DECISIONS])
 const providerSet = new Set(['onnx', 'fixture', 'unavailable'])
@@ -203,6 +203,7 @@ export function parseMeta(value: unknown): Meta {
     !string(root.guidance_review_status) ||
     !number(root.max_upload_bytes) ||
     typeof root.advice_available !== 'boolean' ||
+    typeof root.chat_available !== 'boolean' ||
     root.offline !== true
   )
     fail('service metadata')
@@ -225,4 +226,33 @@ export function parseProblem(value: unknown): Problem {
     request_id: string(root.request_id) ? root.request_id : null,
     retry_after_seconds: number(root.retry_after_seconds) ? root.retry_after_seconds : null,
   } as Problem
+}
+export function parseChat(value: unknown): ChatResponse {
+  const root = object(value)
+  if (
+    !root ||
+    !string(root.session_id) ||
+    !string(root.reply) ||
+    !Array.isArray(root.messages) ||
+    !root.messages.every((item) => {
+      const message = object(item)
+      return (
+        message !== null &&
+        ['user', 'assistant', 'tool'].includes(String(message.role)) &&
+        string(message.content)
+      )
+    }) ||
+    !Array.isArray(root.tool_calls) ||
+    !root.tool_calls.every((item) => {
+      const call = object(item)
+      return (
+        call !== null && string(call.name) && ['completed', 'failed'].includes(String(call.status))
+      )
+    }) ||
+    (root.tool_result !== null &&
+      root.tool_result !== undefined &&
+      object(root.tool_result) === null)
+  )
+    fail('chat response')
+  return root as ChatResponse
 }

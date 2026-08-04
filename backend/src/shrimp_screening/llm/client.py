@@ -80,3 +80,42 @@ class OllamaClient:
         if not isinstance(text, str) or not text.strip():
             raise OllamaError("Ollama returned no text in its response")
         return text
+
+    async def chat(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Call Ollama's chat API, including function-tool definitions."""
+        async with httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=self._timeout_seconds,
+            transport=self._transport,
+        ) as client:
+            try:
+                response = await client.post(
+                    "/api/chat",
+                    json={
+                        "model": self._model,
+                        "messages": messages,
+                        "tools": tools,
+                        "stream": False,
+                        "options": {"temperature": 0.2},
+                    },
+                )
+                response.raise_for_status()
+            except httpx.RequestError as exc:
+                raise OllamaError("could not reach the local Ollama chat server") from exc
+            except httpx.HTTPStatusError as exc:
+                raise OllamaError(
+                    f"Ollama chat returned HTTP {exc.response.status_code} for model "
+                    f"{self._model!r}"
+                ) from exc
+            try:
+                payload: Any = response.json()
+            except ValueError as exc:
+                raise OllamaError("Ollama chat returned invalid JSON") from exc
+        if not isinstance(payload, dict) or not isinstance(payload.get("message"), dict):
+            raise OllamaError("Ollama chat returned no message")
+        return payload

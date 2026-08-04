@@ -31,6 +31,7 @@ export function fixtureMeta(): Meta {
     guidance_review_status: 'LITERATURE_REVIEWED_NOT_EXPERT_REVIEWED',
     max_upload_bytes: 12582912,
     advice_available: true,
+    chat_available: true,
     offline: true,
   }
 }

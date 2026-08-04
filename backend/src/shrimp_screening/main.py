@@ -24,7 +24,8 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
-from shrimp_screening.api import routes_advice, routes_guidance, routes_health, routes_screening
+from shrimp_screening.api import routes_advice, routes_chat, routes_guidance, routes_health, routes_screening
+from shrimp_screening.ai.memory import ConversationMemory
 from shrimp_screening.api.dependencies import RESOURCES_ATTRIBUTE, AppResources
 from shrimp_screening.api.errors import (
     ApiProblemError,
@@ -95,6 +96,7 @@ def build_resources(
         guidance=guidance,
         inference_gate=asyncio.Semaphore(resolved.max_concurrent_inferences),
         llm_client=llm_client if llm_client is not None else _build_llm_client(resolved),
+        chat_memory=ConversationMemory(),
     )
 
 
@@ -175,6 +177,7 @@ def create_app(
     app.include_router(routes_health.router)
     app.include_router(routes_guidance.router)
     app.include_router(routes_advice.router)
+    app.include_router(routes_chat.router)
     app.include_router(routes_screening.router)
     _mount_frontend(
         app,

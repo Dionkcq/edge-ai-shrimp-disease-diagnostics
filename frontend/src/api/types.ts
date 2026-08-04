@@ -117,7 +117,16 @@ export type Meta = {
   guidance_review_status: string
   max_upload_bytes: number
   advice_available: boolean
+  chat_available: boolean
   offline: true
+}
+export type ChatTurn = { role: 'user' | 'assistant' | 'tool'; content: string }
+export type ChatResponse = {
+  session_id: string
+  reply: string
+  messages: ChatTurn[]
+  tool_calls: { name: string; status: 'completed' | 'failed' }[]
+  tool_result: Record<string, unknown> | null
 }
 export type ProblemCode =
   | 'MALFORMED_REQUEST'

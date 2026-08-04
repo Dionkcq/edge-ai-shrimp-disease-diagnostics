@@ -1,6 +1,15 @@
-import type { Advice, Decision, Guidance, Meta, Problem, ScreeningResult } from './types'
+import type {
+  Advice,
+  ChatResponse,
+  Decision,
+  Guidance,
+  Meta,
+  Problem,
+  ScreeningResult,
+} from './types'
 import {
   parseAdvice,
+  parseChat,
   parseGuidance,
   parseMeta,
   parseProblem,
@@ -113,5 +122,42 @@ export async function getAdvice(decision: Decision, signal?: AbortSignal): Promi
     return parseAdvice(payload)
   } catch {
     throw new ApiError('Generated advice did not match the expected contract. Nothing was shown.')
+  }
+}
+export async function sendChat(
+  message: string,
+  sessionId: string | null,
+  image: File | null,
+  signal?: AbortSignal,
+): Promise<ChatResponse> {
+  const body = new FormData()
+  body.append('message', message)
+  if (sessionId) body.append('session_id', sessionId)
+  if (image) body.append('image', image)
+  let response: Response
+  try {
+    response = await fetch(
+      '/api/v1/chat',
+      signal ? { method: 'POST', body, signal } : { method: 'POST', body },
+    )
+  } catch (error) {
+    if (signal?.aborted || (error instanceof DOMException && error.name === 'AbortError'))
+      throw new DOMException('The chat request was cancelled.', 'AbortError')
+    throw new ApiError('The conversational agent could not be reached.')
+  }
+  const payload = await json(response)
+  if (!response.ok) {
+    let problem: Problem | null = null
+    try {
+      problem = parseProblem(payload)
+    } catch {
+      throw new ApiError('The service returned an unexpected chat error.')
+    }
+    throw new ApiError(problem.detail, problem)
+  }
+  try {
+    return parseChat(payload)
+  } catch {
+    throw new ApiError('The conversational agent returned an unexpected response.')
   }
 }
