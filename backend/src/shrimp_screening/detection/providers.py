@@ -56,7 +56,9 @@ def build_detector(
             "in this repository, so this is the expected state on a clean checkout."
         )
     try:
-        registry = load_registry()
+        registry = load_registry(
+            Path(settings.model_registry_path) if settings.model_registry_path else None
+        )
         return load_onnx_provider(
             Path(settings.onnx_model_path),
             registry,

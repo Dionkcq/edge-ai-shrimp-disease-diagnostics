@@ -15,15 +15,17 @@ inference, analytics or telemetry dependency.
 
     laptop = device 'Edge laptop' {
       #offline
-      technology 'Linux laptop, one process, one inference at a time'
+      technology 'Python launcher + local FastAPI process'
       service = process 'Local screening process' {
+        technology 'python run.py — one command'
         api = instanceOf screeningSystem.api
         qualityPolicy = instanceOf screeningSystem.qualityPolicy
         decisionPolicy = instanceOf screeningSystem.decisionPolicyFile
         guidance = instanceOf screeningSystem.guidanceStore
         registry = instanceOf screeningSystem.modelRegistry
+        launcher = instanceOf screeningSystem.runtimeLauncher
         detector = instanceOf screeningSystem.onnxArtifact {
-          title 'Optional ONNX artifact — not installed by default'
+          title 'Optional validated ONNX bundle — installed out of band'
         }
       }
     }

@@ -72,53 +72,67 @@ models/        Empty registry and model-card requirements; no weights
 
 Raw archives, processed data, acceptance records, generated artifacts, experiment runs and model weights are ignored and rejected by repository policy.
 
-## Run locally
+## Run the application with one command
 
 ### Prerequisites
+
+Install these once on the laptop that will run the application:
 
 - Python 3.13
 - [`uv`](https://docs.astral.sh/uv/)
 - Node.js 24 or newer
 - npm
 
-### Install and verify
+### Start
+
+From the repository root, run:
 
 ```bash
-uv sync --locked --all-packages --all-groups
-uv run pytest
-uv run ruff check backend pipeline training scripts
-uv run ruff format --check backend pipeline training scripts
-uv run mypy
-
-cd frontend
-npm ci
-npm run check
-npm run test:e2e
+python run.py
 ```
 
-### Configure
+On Windows, either `py run.py` or `python run.py` is supported. The launcher:
+
+1. installs the locked Python and frontend dependencies when they are missing;
+2. builds the frontend when `frontend/dist/index.html` is absent;
+3. searches `model/` for one official model ZIP;
+4. extracts and verifies the model SHA-256 and registry metadata automatically;
+5. generates ignored runtime state under `.runtime/`;
+6. starts FastAPI and serves the built React interface from the same origin;
+7. opens `http://127.0.0.1:8000` in a browser.
+
+A clean checkout has no model, so the launcher starts in the safe `unavailable`
+state. It displays the application, but screening returns `UNABLE_TO_ASSESS /
+MODEL_UNAVAILABLE`. To use a trained model, put one validated bundle in `model/`
+and run the same command again:
+
+```text
+model/
+└── shrimp-model-v1.zip
+    ├── model/model.onnx
+    └── registry-entry.json
+```
+
+Do not edit `.env`, calculate a hash, or edit `models/registry.json` for an
+official bundle. The launcher performs those steps in `.runtime/`, which is
+ignored by Git. A raw ONNX file is accepted only with a matching
+`model-manifest.json`; the launcher refuses ambiguous or incomplete artifacts.
+
+Useful options:
 
 ```bash
-cp .env.example .env
+python run.py --rebuild       # force a frontend rebuild
+python run.py --no-browser    # start without opening a browser
+python run.py --host 0.0.0.0  # trusted private LAN/hotspot only
 ```
 
-Uncomment and edit whatever you need in `.env` (provider, ONNX model path, local
-advice generation, ...). Every setting has a safe default, so an unedited `.env`
-behaves the same as no `.env` at all.
+Open `http://127.0.0.1:8000`. To use a phone, bind only on a trusted private
+LAN/hotspot interface and apply the host firewall policy described in the
+deployment documentation. Internet access is not required.
 
-### Build the interface and start FastAPI
-
-```bash
-cd frontend
-npm run build
-cd ..
-uv run uvicorn shrimp_screening.main:create_default_app \
-  --factory --host 127.0.0.1 --port 8000
-```
-
-Open `http://127.0.0.1:8000`. To use a phone, bind only on a trusted private LAN/hotspot interface and apply the host firewall policy described in the deployment documentation. Internet access is not required.
-
-The default service is intentionally unavailable for model inference. Installing an arbitrary ONNX file is insufficient: the registry SHA-256, class metadata, tensor shapes and export contract must all validate at startup.
+The launcher keeps the existing fail-closed model contract: a malformed,
+renamed, unregistered or incompatible model stops startup with an actionable
+error instead of silently producing detections.
 
 ## Optional: local generated advice
 

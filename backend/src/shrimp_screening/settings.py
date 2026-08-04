@@ -47,8 +47,11 @@ class Settings(BaseSettings):
     provider: ProviderName = "unavailable"
 
     #: Path to an ONNX artifact. Only consulted by the onnx provider, which still
-    #: refuses to load it unless its sha256 is registered in models/registry.json.
+    #: refuses to load it unless its sha256 is registered in the model registry.
     onnx_model_path: str | None = None
+    #: Optional generated registry path used by the one-command launcher. When absent,
+    #: the committed models/registry.json remains the safe default.
+    model_registry_path: str | None = None
 
     max_upload_bytes: int = Field(default=DEFAULT_MAX_UPLOAD_BYTES, ge=1024, le=64 * 1024 * 1024)
 

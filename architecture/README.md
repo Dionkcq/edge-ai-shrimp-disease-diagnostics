@@ -32,7 +32,19 @@ npm run build
 npm run check:site
 ```
 
-For the interactive local site:
+The application runtime is intentionally started from the repository root with one
+command:
+
+```bash
+python run.py
+```
+
+The launcher discovers an out-of-band model bundle, validates its hash and
+contract, generates ignored runtime registry state, builds the frontend and
+starts the same-origin API/UI process. The diagram's model artifact remains
+optional and the clean checkout still abstains safely.
+
+For the interactive architecture site:
 
 ```bash
 npm run dev -- --listen 127.0.0.1 --port 5173

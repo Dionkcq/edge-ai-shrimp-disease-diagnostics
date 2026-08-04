@@ -18,6 +18,9 @@ architecture/node_modules/
 architecture/dist/
 architecture/build/
 
+# Generated launcher state
+.runtime/
+
 # Notebooks
 .ipynb_checkpoints/
 

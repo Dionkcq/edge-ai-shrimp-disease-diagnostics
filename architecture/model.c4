@@ -59,6 +59,12 @@ remain visible product facts.
         summary 'Rejects undersized, blurred, dark, bright or low-contrast images.'
       }
 
+      runtimeLauncher = component 'One-command runtime launcher' {
+        #offline #safety-critical
+        technology 'Cross-platform Python script'
+        summary 'Discovers the official model bundle, computes SHA-256, generates ignored runtime registry state, builds the UI and starts the same-origin service.'
+      }
+
       provider = component 'Detector provider' {
         #unavailable-by-default
         technology 'unavailable | fixture | ONNX Runtime'
