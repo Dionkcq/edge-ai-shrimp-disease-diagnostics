@@ -1,5 +1,11 @@
-import type { Decision, Guidance, Meta, Problem, ScreeningResult } from './types'
-import { parseGuidance, parseMeta, parseProblem, parseScreeningResult } from './validate'
+import type { Advice, Decision, Guidance, Meta, Problem, ScreeningResult } from './types'
+import {
+  parseAdvice,
+  parseGuidance,
+  parseMeta,
+  parseProblem,
+  parseScreeningResult,
+} from './validate'
 
 export class ApiError extends Error {
   constructor(
@@ -72,5 +78,40 @@ export async function getGuidance(decision: Decision, signal?: AbortSignal): Pro
     return parseGuidance(await json(response))
   } catch {
     throw new ApiError('Local guidance did not match the expected contract.')
+  }
+}
+/** Ask the local model to expand the cited guidance for one decision.
+ *
+ * The problem body is carried on the thrown `ApiError` rather than flattened to a
+ * message, because the caller renders `ADVICE_UNAVAILABLE` (retryable) differently
+ * from `NOT_FOUND` (the feature is not on this build at all). */
+export async function getAdvice(decision: Decision, signal?: AbortSignal): Promise<Advice> {
+  let response: Response
+  try {
+    response = await fetch(`/api/v1/advice/${decision}`, signal ? { signal } : {})
+  } catch (error) {
+    if (
+      signal?.aborted ||
+      (error instanceof DOMException && error.name === 'AbortError') ||
+      (error instanceof Error && error.name === 'AbortError')
+    ) {
+      throw new DOMException('The advice request was cancelled.', 'AbortError')
+    }
+    throw new ApiError('The service could not be reached. No advice was generated.')
+  }
+  const payload = await json(response)
+  if (!response.ok) {
+    let problem: Problem | null = null
+    try {
+      problem = parseProblem(payload)
+    } catch {
+      throw new ApiError('The service returned an unexpected error. No advice was displayed.')
+    }
+    throw new ApiError(problem.detail, problem)
+  }
+  try {
+    return parseAdvice(payload)
+  } catch {
+    throw new ApiError('Generated advice did not match the expected contract. Nothing was shown.')
   }
 }

@@ -1,15 +1,31 @@
-import type { Guidance, ScreeningResult } from '../../api/types'
+import type { Advice, Guidance, ScreeningResult } from '../../api/types'
 import { abstentionCopy, decisionMeta, qualityCopy } from '../../domain/decisions'
 import { EvidenceOverlay } from '../inspect/EvidenceOverlay'
 import { GuidancePanel } from '../guidance/GuidancePanel'
+import { AdvicePanel, type AdviceState } from '../advice/AdvicePanel'
 
 type Props = {
   result: ScreeningResult
   previewUrl: string
   guidance: Guidance | null
   guidanceState: 'idle' | 'loading' | 'ready' | 'error'
+  adviceAvailable: boolean
+  advice: Advice | null
+  adviceState: AdviceState
+  adviceError: string | null
+  onRequestAdvice: () => void
 }
-export function ResultPanel({ result, previewUrl, guidance, guidanceState }: Props) {
+export function ResultPanel({
+  result,
+  previewUrl,
+  guidance,
+  guidanceState,
+  adviceAvailable,
+  advice,
+  adviceState,
+  adviceError,
+  onRequestAdvice,
+}: Props) {
   const meta = decisionMeta[result.decision]
   return (
     <section className="result" aria-labelledby="result-title" aria-live="polite">
@@ -65,6 +81,13 @@ export function ResultPanel({ result, previewUrl, guidance, guidanceState }: Pro
       </div>
       <EvidenceOverlay previewUrl={previewUrl} result={result} />
       <GuidancePanel guidance={guidance} state={guidanceState} />
+      <AdvicePanel
+        available={adviceAvailable}
+        advice={advice}
+        state={adviceState}
+        error={adviceError}
+        onRequest={onRequestAdvice}
+      />
       <div className="request-note">
         Request {result.request_id} · processed locally in {Math.round(result.timings_ms.total_ms)}{' '}
         ms · image not retained by this interface

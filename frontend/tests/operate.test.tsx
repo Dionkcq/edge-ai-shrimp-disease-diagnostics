@@ -17,6 +17,11 @@ describe('operate surface', () => {
           previewUrl="blob:image"
           guidance={null}
           guidanceState="idle"
+          adviceAvailable={false}
+          advice={null}
+          adviceState="idle"
+          adviceError={null}
+          onRequestAdvice={() => undefined}
         />,
       )
       expect(screen.getByText('Screening result')).toBeInTheDocument()

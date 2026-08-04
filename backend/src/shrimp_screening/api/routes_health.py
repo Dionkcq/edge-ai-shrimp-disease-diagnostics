@@ -64,6 +64,10 @@ class MetaResponse(BaseModel):
     decision_policy_hash: str
     guidance_review_status: str
     max_upload_bytes: int
+    #: Whether ``GET /api/v1/advice/{decision}`` exists on this build. False means
+    #: that endpoint answers 404, and a client must not offer the feature at all
+    #: rather than discovering it by asking and failing.
+    advice_available: bool
     offline: Literal[True] = True
 
 
@@ -101,4 +105,5 @@ def meta(resources: Resources) -> MetaResponse:
         decision_policy_hash=resources.decision_policy.policy_hash,
         guidance_review_status=resources.guidance.review_status,
         max_upload_bytes=resources.settings.max_upload_bytes,
+        advice_available=resources.llm_client is not None,
     )

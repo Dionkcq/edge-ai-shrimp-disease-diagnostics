@@ -83,6 +83,18 @@ def test_disabled_is_the_default(tmp_path: Path) -> None:
     assert response.status_code == 404
 
 
+def test_meta_declares_the_feature_off_so_a_client_never_offers_it(tmp_path: Path) -> None:
+    with TestClient(_app(tmp_path, llm_enabled=False)) as client:
+        body = client.get("/api/v1/meta").json()
+    assert body["advice_available"] is False
+
+
+def test_meta_declares_the_feature_on_when_a_client_is_wired(tmp_path: Path) -> None:
+    with TestClient(_app(tmp_path, llm_enabled=True, handler=_respond(_GOOD_PAYLOAD))) as client:
+        body = client.get("/api/v1/meta").json()
+    assert body["advice_available"] is True
+
+
 def test_unknown_decision_uses_the_stable_problem_contract(tmp_path: Path) -> None:
     with TestClient(_app(tmp_path, llm_enabled=False)) as client:
         response = client.get("/api/v1/advice/NOT_A_DECISION")

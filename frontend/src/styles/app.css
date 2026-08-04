@@ -570,6 +570,68 @@ p {
   grid-column: 2;
   margin: 0;
 }
+.advice {
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--line);
+}
+.advice h3 {
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  letter-spacing: -0.02em;
+  max-width: 30ch;
+}
+.advice h4 {
+  margin: 1.5rem 0 0.5rem;
+}
+.advice-lede {
+  color: var(--muted);
+  max-width: 70ch;
+  margin-top: 0.5rem;
+}
+.advice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+.advice-actions p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 46ch;
+}
+.advice-disclosure {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-left: 4px solid var(--amber);
+  background: var(--amber-pale);
+  color: var(--ink);
+}
+.advice-disclosure strong {
+  display: block;
+  font: 800 0.78rem var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.advice-disclosure p {
+  margin: 0.5rem 0 0;
+  max-width: 70ch;
+}
+.advice-summary {
+  font-size: 1.15rem;
+  max-width: 70ch;
+}
+.advice-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 70ch;
+}
+.advice-provenance {
+  margin-top: 1.5rem;
+  font: 0.72rem var(--font-mono);
+  color: var(--muted);
+}
 .source-list {
   padding: 0;
   list-style: none;
@@ -731,6 +793,9 @@ footer p {
   .source-list li,
   footer {
     flex-direction: column;
+  }
+  .advice-actions .button {
+    width: 100%;
   }
   .desktop-hint {
     display: none;

@@ -1,5 +1,5 @@
 import { DECISIONS } from '../domain/decisions'
-import type { Guidance, Meta, Problem, ScreeningResult } from './types'
+import type { Advice, Guidance, Meta, Problem, ScreeningResult } from './types'
 
 const decisionSet = new Set<string>([...DECISIONS])
 const providerSet = new Set(['onnx', 'fixture', 'unavailable'])
@@ -25,6 +25,7 @@ const problemSet = new Set([
   'SERVICE_BUSY',
   'NOT_FOUND',
   'INTERNAL_ERROR',
+  'ADVICE_UNAVAILABLE',
 ])
 
 function object(value: unknown): Record<string, unknown> | null {
@@ -43,6 +44,22 @@ function strings(value: unknown): value is string[] {
 }
 function fail(name: string): never {
   throw new Error(`The server returned an unexpected ${name}. No result was displayed.`)
+}
+function citedSources(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.every((item) => {
+      const source = object(item)
+      return (
+        source !== null &&
+        [source.id, source.title, source.publisher, source.url, source.accessed_on].every(string)
+      )
+    })
+  )
+}
+function nonEmptyStrings(value: unknown): value is string[] {
+  return strings(value) && value.length > 0 && value.every((item) => item.trim().length > 0)
 }
 
 export function parseScreeningResult(value: unknown): ScreeningResult {
@@ -134,18 +151,40 @@ export function parseGuidance(value: unknown): Guidance {
     !string(root.id) ||
     !string(root.headline) ||
     !string(root.body) ||
-    !Array.isArray(root.sources) ||
-    root.sources.length === 0 ||
-    !root.sources.every((item) => {
-      const s = object(item)
-      return s && [s.id, s.title, s.publisher, s.url, s.accessed_on].every(string)
-    }) ||
+    !citedSources(root.sources) ||
     !string(root.review_status) ||
     !string(root.review_note) ||
     !strings(root.limitations)
   )
     fail('guidance response')
   return value as Guidance
+}
+/** Reject any advice body that cannot be rendered with its full disclosure.
+ *
+ * `review_status`, `review_note` and `provider` are checked as strictly as the content
+ * itself. An advice body that arrives without them is not "advice missing a label" this
+ * interface could render anyway -- it is a response this interface refuses. */
+export function parseAdvice(value: unknown): Advice {
+  const root = object(value)
+  if (
+    !root ||
+    !decisionSet.has(String(root.decision)) ||
+    !string(root.summary) ||
+    root.summary.trim().length === 0 ||
+    !nonEmptyStrings(root.immediate_actions) ||
+    !nonEmptyStrings(root.prevention_actions) ||
+    !strings(root.additional_considerations) ||
+    !string(root.based_on_guidance_id) ||
+    !citedSources(root.sources) ||
+    root.provider !== 'ollama' ||
+    !string(root.model_id) ||
+    root.review_status !== 'AI_GENERATED_NOT_REVIEWED' ||
+    !string(root.review_note) ||
+    root.review_note.trim().length === 0 ||
+    !strings(root.limitations)
+  )
+    fail('advice response')
+  return value as Advice
 }
 export function parseMeta(value: unknown): Meta {
   const root = object(value)
@@ -163,6 +202,7 @@ export function parseMeta(value: unknown): Meta {
     !decisions.every((d: unknown) => string(d) && decisionSet.has(d)) ||
     !string(root.guidance_review_status) ||
     !number(root.max_upload_bytes) ||
+    typeof root.advice_available !== 'boolean' ||
     root.offline !== true
   )
     fail('service metadata')

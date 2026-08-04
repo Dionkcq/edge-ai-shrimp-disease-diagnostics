@@ -66,13 +66,39 @@ export type ScreeningResult = {
   limitations: string[]
   timings_ms: { intake_ms: number; quality_ms: number; inference_ms: number; total_ms: number }
 }
+export type CitedSource = {
+  id: string
+  title: string
+  publisher: string
+  url: string
+  accessed_on: string
+}
 export type Guidance = {
   decision: Decision
   id: string
   headline: string
   body: string
-  sources: { id: string; title: string; publisher: string; url: string; accessed_on: string }[]
+  sources: CitedSource[]
   review_status: string
+  review_note: string
+  limitations: string[]
+}
+/** Body of `GET /api/v1/advice/{decision}`. Optional, off by default; see `Meta.advice_available`.
+ *
+ * `review_status` and `provider` are fixed literals in the contract and are validated as such:
+ * there is no arrangement in which this interface renders the text without also rendering the
+ * fact that a language model wrote it and nobody reviewed it. */
+export type Advice = {
+  decision: Decision
+  summary: string
+  immediate_actions: string[]
+  prevention_actions: string[]
+  additional_considerations: string[]
+  based_on_guidance_id: string
+  sources: CitedSource[]
+  provider: 'ollama'
+  model_id: string
+  review_status: 'AI_GENERATED_NOT_REVIEWED'
   review_note: string
   limitations: string[]
 }
@@ -90,6 +116,7 @@ export type Meta = {
   decision_policy_hash: string
   guidance_review_status: string
   max_upload_bytes: number
+  advice_available: boolean
   offline: true
 }
 export type ProblemCode =
@@ -100,6 +127,7 @@ export type ProblemCode =
   | 'SERVICE_BUSY'
   | 'NOT_FOUND'
   | 'INTERNAL_ERROR'
+  | 'ADVICE_UNAVAILABLE'
 export type Problem = {
   type: string
   title: string

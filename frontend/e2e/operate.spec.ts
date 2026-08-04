@@ -1,6 +1,11 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
-import { fixtureGuidance, fixtureMeta, fixtureResult } from '../tests/support/fixtures'
+import {
+  fixtureAdvice,
+  fixtureGuidance,
+  fixtureMeta,
+  fixtureResult,
+} from '../tests/support/fixtures'
 
 async function mockLocalApi(page: Page) {
   await page.route('**/api/v1/meta', (route) => route.fulfill({ json: fixtureMeta() }))
@@ -8,6 +13,7 @@ async function mockLocalApi(page: Page) {
     route.fulfill({ json: fixtureResult('MULTIPLE_TARGET_MARKERS_DETECTED') }),
   )
   await page.route('**/api/v1/guidance/**', (route) => route.fulfill({ json: fixtureGuidance() }))
+  await page.route('**/api/v1/advice/**', (route) => route.fulfill({ json: fixtureAdvice() }))
 }
 
 const shrimpImage = 'e2e/fixtures/test-shrimp.jpg'
@@ -54,6 +60,30 @@ test('operates without horizontal overflow and exposes a safe result', async ({
   expect(marker.y + marker.height).toBeLessThanOrEqual(stage.y + stage.height + 1)
 
   await page.screenshot({ path: testInfo.outputPath('operate.png'), fullPage: true })
+})
+
+test('generates optional advice only on request and always with its disclosure', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByLabel(/take or choose/i).setInputFiles(shrimpImage)
+  await page.getByRole('button', { name: /screen photograph/i }).click()
+  await expect(page.getByRole('heading', { name: 'Both marker types seen' })).toBeVisible()
+
+  // Nothing is generated until a person asks for it.
+  await expect(page.getByText(fixtureAdvice().summary)).toHaveCount(0)
+  await page.getByRole('button', { name: /generate explanation/i }).click()
+
+  await expect(page.getByText(/ai generated · not reviewed/i)).toBeVisible()
+  await expect(page.getByText(fixtureAdvice().summary)).toBeVisible()
+  await expect(page.getByText(fixtureAdvice().review_note)).toBeVisible()
+  await expect(page.locator('.advice-provenance')).toContainText(fixtureAdvice().model_id)
+
+  const dimensions = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    content: document.documentElement.scrollWidth,
+  }))
+  expect(dimensions.content).toBeLessThanOrEqual(dimensions.viewport)
 })
 
 test('passes browser accessibility checks and keyboard focus remains visible', async ({ page }) => {

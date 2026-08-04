@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { ApiError, getGuidance, getMeta, screenImage } from '../api/client'
-import type { Guidance, Meta, ProblemCode, ScreeningResult } from '../api/types'
+import { ApiError, getAdvice, getGuidance, getMeta, screenImage } from '../api/client'
+import type { Advice, Guidance, Meta, ProblemCode, ScreeningResult } from '../api/types'
 import { PrivacyPanel } from '../components/PrivacyPanel'
 import { CapturePanel } from '../features/capture/CapturePanel'
+import type { AdviceState } from '../features/advice/AdvicePanel'
 import { ResultPanel } from '../features/result/ResultPanel'
 import { StatusStrip } from '../features/status/StatusStrip'
 
@@ -24,6 +25,8 @@ const problemCopy: Record<ProblemCode, string> = {
   SERVICE_BUSY: 'The service is already screening another photograph. Try again shortly.',
   NOT_FOUND: 'The requested local resource was not found.',
   INTERNAL_ERROR: 'The service could not complete the request. Try once more or check the server.',
+  ADVICE_UNAVAILABLE:
+    'The local model could not produce advice that passed the safety check. The reviewed guidance above is unaffected.',
 }
 
 export function App() {
@@ -34,10 +37,14 @@ export function App() {
   const [result, setResult] = useState<ScreeningResult | null>(null)
   const [guidance, setGuidance] = useState<Guidance | null>(null)
   const [guidanceState, setGuidanceState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [advice, setAdvice] = useState<Advice | null>(null)
+  const [adviceState, setAdviceState] = useState<AdviceState>('idle')
+  const [adviceError, setAdviceError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [scenario, setScenario] = useState('multiple')
   const request = useRef<AbortController | null>(null)
+  const adviceRequest = useRef<AbortController | null>(null)
   const preview = useRef<string | null>(null)
   useEffect(() => {
     const controller = new AbortController()
@@ -54,9 +61,22 @@ export function App() {
     () => () => {
       if (preview.current) URL.revokeObjectURL(preview.current)
       request.current?.abort()
+      adviceRequest.current?.abort()
     },
     [],
   )
+
+  /** Generated advice belongs to exactly one screening result. Any new capture or
+   * submission drops it, so text generated for a previous photograph can never sit
+   * under a current one. */
+  function clearAdvice() {
+    const active = adviceRequest.current
+    adviceRequest.current = null
+    active?.abort()
+    setAdvice(null)
+    setAdviceState('idle')
+    setAdviceError(null)
+  }
 
   function choose(next: File | null) {
     const activeRequest = request.current
@@ -69,6 +89,7 @@ export function App() {
     setResult(null)
     setGuidance(null)
     setGuidanceState('idle')
+    clearAdvice()
     setError(null)
     if (!next) return
     if (!['image/jpeg', 'image/png'].includes(next.type)) {
@@ -96,6 +117,7 @@ export function App() {
     setResult(null)
     setGuidance(null)
     setGuidanceState('idle')
+    clearAdvice()
     try {
       const next = await screenImage(
         file,
@@ -126,6 +148,40 @@ export function App() {
   }
   function cancel() {
     request.current?.abort()
+  }
+
+  /** Ask the local model to expand the guidance for the current decision.
+   *
+   * Only ever called from the advice panel's button: generation is slow and optional,
+   * so it never runs as a side effect of screening. A failure here is confined to this
+   * panel and leaves the reviewed guidance untouched. */
+  async function requestAdvice() {
+    if (!result || adviceState === 'loading') return
+    const controller = new AbortController()
+    adviceRequest.current?.abort()
+    adviceRequest.current = controller
+    setAdviceError(null)
+    setAdviceState('loading')
+    try {
+      const next = await getAdvice(result.decision, controller.signal)
+      setAdvice(next)
+      setAdviceState('ready')
+    } catch (caught) {
+      if (controller.signal.aborted) return
+      if (caught instanceof DOMException && caught.name === 'AbortError') return
+      setAdvice(null)
+      setAdviceState('error')
+      if (caught instanceof ApiError && caught.problem)
+        setAdviceError(
+          caught.problem.code === 'NOT_FOUND'
+            ? 'Advice generation is not enabled on this build of the service.'
+            : problemCopy[caught.problem.code],
+        )
+      else if (caught instanceof ApiError) setAdviceError(caught.message)
+      else setAdviceError('An unexpected interface error stopped the request. Nothing was shown.')
+    } finally {
+      if (adviceRequest.current === controller) adviceRequest.current = null
+    }
   }
 
   return (
@@ -206,6 +262,11 @@ export function App() {
             previewUrl={previewUrl}
             guidance={guidance}
             guidanceState={guidanceState}
+            adviceAvailable={meta?.advice_available ?? false}
+            advice={advice}
+            adviceState={adviceState}
+            adviceError={adviceError}
+            onRequestAdvice={() => void requestAdvice()}
           />
         )}
         <PrivacyPanel />
