@@ -27,7 +27,6 @@ def test_extracts_ultralytics_metadata_without_sidecar(tmp_path: Path) -> None:
         metadata={
             "task": "detect",
             "names": json.dumps({"0": "dark_gill", "1": "white_spot"}),
-            "artifact_license": "AGPL-3.0-or-later",
         },
     )
 
@@ -37,6 +36,7 @@ def test_extracts_ultralytics_metadata_without_sidecar(tmp_path: Path) -> None:
     assert entry["input_size"] == 640
     assert entry["class_names"] == {"0": "dark_gill", "1": "white_spot"}
     assert entry["output_layout"] == "ultralytics_v8_detect_v1"
+    assert entry["artifact_license"] == "UNDECLARED"
     assert entry["anchors"] == []
     assert entry["opset"] == 17
 

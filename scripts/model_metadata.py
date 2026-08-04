@@ -126,9 +126,7 @@ def extract_model_entry(model_path: Path) -> dict[str, Any]:
     if opsets != [17]:
         raise MetadataError(f"ONNX opset must be 17, found {opsets or 'none'}")
 
-    artifact_license = values.get("artifact_license")
-    if not artifact_license:
-        raise MetadataError("ONNX metadata is missing 'artifact_license'")
+    artifact_license = values.get("artifact_license") or values.get("license") or "UNDECLARED"
     toolchain = values.get("training_toolchain", default_toolchain)
     mapping_status = values.get("dataset_mapping_status", "PROVISIONAL_UNCONFIRMED")
     return {

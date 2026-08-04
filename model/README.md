@@ -16,9 +16,10 @@ model/
 
 The launcher reads the ONNX graph and embedded metadata, calculates its SHA-256,
 and generates ignored runtime registry state. It supports standard YOLO detect
-exports when the file includes class names, task, license and compatible graph
-metadata. It refuses unsupported or incomplete models rather than guessing how
-to decode their outputs.
+exports when the file includes class names, task and a compatible graph. Missing
+license metadata is recorded as `UNDECLARED`; the launcher does not invent a
+license. It refuses unsupported or incomplete detection contracts rather than
+guessing how to decode their outputs.
 
 Official bundles with an explicit registry entry remain supported:
 

@@ -40,9 +40,10 @@ _TOOLCHAIN_LICENSES = {
     "ultralytics": {
         "AGPL-3.0-or-later",
         "LicenseRef-Ultralytics-Enterprise",
+        "UNDECLARED",
     },
-    "synthetic-onnx-graph": {"AGPL-3.0-or-later"},
-    "custom-pytorch-yolo": {"AGPL-3.0-or-later"},
+    "synthetic-onnx-graph": {"AGPL-3.0-or-later", "UNDECLARED"},
+    "custom-pytorch-yolo": {"AGPL-3.0-or-later", "UNDECLARED"},
 }
 #: Anchors per detection scale for CUSTOM_YOLO_ANCHOR_V1 (3 scales x 3 anchors).
 #: Mirrors ``training/src/shrimp_training/anchors.py::ANCHORS_PER_SCALE`` -- kept
