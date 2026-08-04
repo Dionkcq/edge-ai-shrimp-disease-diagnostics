@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from shrimp_screening.contracts.enums import MarkerRole
-from shrimp_screening.paths import policy_dir
+from shrimp_screening.paths import data_dir
 
 
 class PolicyError(RuntimeError):
@@ -202,7 +202,7 @@ def _field(document: dict[str, Any], key: str, path: Path) -> Any:
 
 
 def load_quality_policy(path: Path | None = None) -> QualityPolicy:
-    source = path if path is not None else policy_dir() / "quality_policy_v1.json"
+    source = path if path is not None else data_dir() / "quality_policy_v1.json"
     document, digest = _load_document(source)
     _check_exact_fields(document, _QUALITY_FIELDS, source)
     return QualityPolicy(
@@ -218,7 +218,7 @@ def load_quality_policy(path: Path | None = None) -> QualityPolicy:
 
 
 def load_decision_policy(path: Path | None = None) -> DecisionPolicy:
-    source = path if path is not None else policy_dir() / "decision_policy_v1.json"
+    source = path if path is not None else data_dir() / "decision_policy_v1.json"
     document, digest = _load_document(source)
     _check_exact_fields(document, _DECISION_FIELDS, source)
     raw_multi_label = _field(document, "multi_label", source)

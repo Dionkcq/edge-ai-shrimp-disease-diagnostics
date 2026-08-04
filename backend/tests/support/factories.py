@@ -18,8 +18,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from shrimp_screening.main import create_app
 from shrimp_screening.settings import ProviderName, Settings
+from shrimp_server.main import create_app
 
 
 def build_app(provider: ProviderName = "unavailable", **overrides: object) -> FastAPI:

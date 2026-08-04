@@ -27,15 +27,9 @@ from python_multipart.exceptions import MultipartParseError
 from python_multipart.multipart import MultipartParser, parse_options_header
 from starlette.requests import Request
 
-from shrimp_screening.api.errors import ApiProblemError
 from shrimp_screening.contracts.enums import ProblemCode
-
-#: A screening request carries exactly one file. Anything else is a client bug or
-#: an attempt to make the parser do work proportional to attacker-controlled input.
-MAX_PARTS = 8
-
-#: Bound on the ``name="..."`` bookkeeping we are willing to buffer per part.
-_MAX_HEADER_BYTES = 4096
+from shrimp_screening.problems import ApiProblemError
+from shrimp_screening.settings import MAX_HEADER_BYTES, MAX_PARTS
 
 
 def _too_large(limit: int) -> ApiProblemError:
@@ -79,11 +73,11 @@ class _FieldCollector:
         self._header_value.clear()
 
     def on_header_field(self, data: bytes, start: int, end: int) -> None:
-        if len(self._header_name) + (end - start) <= _MAX_HEADER_BYTES:
+        if len(self._header_name) + (end - start) <= MAX_HEADER_BYTES:
             self._header_name.extend(data[start:end])
 
     def on_header_value(self, data: bytes, start: int, end: int) -> None:
-        if len(self._header_value) + (end - start) <= _MAX_HEADER_BYTES:
+        if len(self._header_value) + (end - start) <= MAX_HEADER_BYTES:
             self._header_value.extend(data[start:end])
 
     def on_header_end(self) -> None:

@@ -15,8 +15,8 @@ from shrimp_screening.llm.client import OllamaError
 class ChatModel(Protocol):
     async def chat(
         self, *, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
-    ) -> dict[str, Any]:
-        ...
+    ) -> dict[str, Any]: ...
+
 
 _SYSTEM = (
     "You are Pondside screen, an offline shrimp-image screening assistant. "

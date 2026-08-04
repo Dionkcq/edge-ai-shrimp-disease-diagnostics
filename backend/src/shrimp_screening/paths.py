@@ -1,8 +1,8 @@
-"""Locating the repository-level data directories (`policy/`, `guidance/`, `models/`).
+"""Locating `data/`, the directory holding every file the service loads at runtime.
 
-Those directories are deployment data, not Python package data: a farm operator can
-update a guidance file or a threshold without reinstalling the service. In this cycle
-they live at the repository root, so the root has to be discoverable.
+Its contents are deployment data, not Python package data: a farm operator can
+update the guidance corpus or a threshold without reinstalling the service. They
+live at the repository root, so the root has to be discoverable.
 
 Discovery is explicit and fails loudly. It never silently falls back to the current
 working directory, because that would make policy hashes depend on where uvicorn was
@@ -15,11 +15,13 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-#: Marker files that only ever exist together at the root of this repository.
+#: Marker files that only ever exist together at the root of this repository. All
+#: three are loaded during startup, so a root missing any of them is a root the
+#: service could not have booted from anyway.
 _ROOT_MARKERS: tuple[str, ...] = (
-    "policy/quality_policy_v1.json",
-    "guidance/guidance_v1.json",
-    "models/registry.json",
+    "data/quality_policy_v1.json",
+    "data/guidance_v1.json",
+    "data/model_registry.json",
 )
 
 #: Override for containerised or packaged deployments.
@@ -36,7 +38,7 @@ def _has_markers(candidate: Path) -> bool:
 
 @lru_cache(maxsize=1)
 def repository_root() -> Path:
-    """Return the directory holding `policy/`, `guidance/`, `models/` and `contracts/`."""
+    """Return the directory holding `data/`."""
     override = os.environ.get(ROOT_ENV_VAR)
     if override:
         candidate = Path(override).expanduser().resolve()
@@ -57,21 +59,6 @@ def repository_root() -> Path:
     )
 
 
-def policy_dir() -> Path:
-    return repository_root() / "policy"
-
-
-def guidance_dir() -> Path:
-    return repository_root() / "guidance"
-
-
-def models_dir() -> Path:
-    return repository_root() / "models"
-
-
-def contracts_dir() -> Path:
-    return repository_root() / "contracts"
-
-
-def docs_dir() -> Path:
-    return repository_root() / "docs"
+def data_dir() -> Path:
+    """The one directory every runtime data file is read from."""
+    return repository_root() / "data"

@@ -46,31 +46,70 @@ The frontend and API share one origin. Runtime assets, policies, guidance and mo
 | Deterministic, fail-closed dataset preparation | Implemented and tested |
 | Responsive React interface | Implemented and tested on desktop/mobile Chromium |
 | Same-origin production serving | Implemented and integration-tested |
-| LikeC4 architecture site | Deployed and verified on GitHub Pages |
 | Isolated training/export workflow | Implemented and orchestration-tested; no real run completed |
 | Trained or validated model weights | Not included |
 | Accuracy, calibration, latency and parity measurements | Not available |
 | Guidance review | Literature-reviewed; not expert-reviewed |
 
-See [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md) and [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) before interpreting any result.
+The declared limitations of any result are served with it, in the `limitations[]` array
+of every response. They are defined in
+[`backend/src/shrimp_screening/limitations.py`](backend/src/shrimp_screening/limitations.py).
 
 ## Repository layout
 
 ```text
-backend/       FastAPI service, contracts, intake, policies and inference providers
-frontend/      React/Vite interface, unit tests and Playwright tests
-pipeline/      AGPL dataset audit, evidence and preparation tooling
-training/      Separately locked Python 3.11 AGPL training/export tooling
-contracts/     Generated JSON schemas shared across boundaries
-policy/        Versioned quality and decision policies
-guidance/      Cited, non-generative educational guidance
-architecture/  LikeC4 model and publishable architecture site
-scripts/       Repository, licensing and release checks
-datasets/      Provenance records and non-accepting mapping template
-models/        Empty registry and model-card requirements; no weights
+backend/src/shrimp_server/     HTTP surface: routers, middleware, problem rendering
+backend/src/shrimp_screening/  Domain: detection, intake, policy, guidance, LLM advice
+backend/tests/                 Unit, integration and security tests
+frontend/                      React/Vite interface, unit tests and Playwright tests
+data/                          Every JSON the runtime and the pipeline read
+model/                         Everything that produces the detector (AGPL, never runtime)
+  pipeline/                    Dataset audit, evidence and fail-closed preparation
+  training/                    Separately locked Python 3.11 trainer and ONNX export
 ```
 
-Raw archives, processed data, acceptance records, generated artifacts, experiment runs and model weights are ignored and rejected by repository policy.
+### `data/`
+
+One folder, flat, holding everything that is data rather than code:
+
+```text
+quality_policy_v1.json         Capture-quality thresholds     -> loaded at startup
+decision_policy_v1.json        Score/abstention thresholds    -> loaded at startup
+guidance_v1.json               Cited educational guidance     -> loaded at startup
+model_registry.json            SHA-256 allowlist of models    -> loaded at startup
+dataset_manifest.json          Source-dataset provenance      -> pipeline
+mapping_acceptance.example.json  Non-accepting gate template  -> pipeline
+raw/                           Source archives (gitignored, never committed)
+```
+
+The first three are the **root markers**: `repository_root()` locates the repository by
+finding `data/quality_policy_v1.json`, `data/guidance_v1.json` and
+`data/model_registry.json` together, and fails loudly rather than falling back to the
+working directory. Renaming any of them means updating
+[`paths.py`](backend/src/shrimp_screening/paths.py).
+
+`shrimp_server` imports `shrimp_screening`, never the reverse — so the domain stays
+usable from a script or a notebook without pulling in an HTTP stack. The direction is
+enforced by `backend/tests/security/test_dependency_boundary.py`.
+
+Raw archives, processed data, acceptance records, generated artifacts, experiment runs and model weights are gitignored and never committed.
+
+### Two Python environments, deliberately
+
+`.venv` is Python 3.13 and holds the runtime; `model/training/.venv` is Python 3.11 and
+holds PyTorch. They cannot be merged, for two independent reasons: the interpreters differ,
+and `model/training/` is excluded from the uv workspace so that AGPL PyTorch/Ultralytics
+never enter the served application's resolved dependency graph.
+
+That boundary is asserted by
+[`backend/tests/security/test_dependency_boundary.py`](backend/tests/security/test_dependency_boundary.py),
+which checks declared dependencies, the resolved `uv.lock`, static imports, and the real
+import graph of a booted app.
+
+`model/pipeline/` is different again: it is Python 3.13 and *is* a workspace member, so it
+installs into the root `.venv` alongside the backend. It sits under `model/` because it is
+part of producing the detector, not because it shares the trainer's environment — which is
+why `model/` is a plain container directory rather than a project of its own.
 
 ## Run locally
 
@@ -86,8 +125,8 @@ Raw archives, processed data, acceptance records, generated artifacts, experimen
 ```bash
 uv sync --locked --all-packages --all-groups
 uv run pytest
-uv run ruff check backend pipeline training scripts
-uv run ruff format --check backend pipeline training scripts
+uv run ruff check backend model
+uv run ruff format --check backend model
 uv run mypy
 
 cd frontend
@@ -98,13 +137,19 @@ npm run test:e2e
 
 ### Configure
 
-```bash
-cp .env.example .env
-```
+Optional. Every setting has a safe default, so running with no configuration at all is
+a supported state — it is the fail-closed one.
 
-Uncomment and edit whatever you need in `.env` (provider, ONNX model path, local
-advice generation, ...). Every setting has a safe default, so an unedited `.env`
-behaves the same as no `.env` at all.
+To change something, create a `.env` in the repository root (it is gitignored) or export
+the variable. Every field is prefixed `SHRIMP_` and each one is documented, with the
+reasoning for its default, in
+[`backend/src/shrimp_screening/settings.py`](backend/src/shrimp_screening/settings.py):
+
+```bash
+SHRIMP_PROVIDER=fixture        # unavailable (default) | fixture | onnx
+SHRIMP_ONNX_MODEL_PATH=...     # only loaded if its sha256 is in data/model_registry.json
+SHRIMP_LLM_ENABLED=true        # opt in to local Ollama advice; off by default
+```
 
 ### Build the interface and start FastAPI
 
@@ -112,7 +157,7 @@ behaves the same as no `.env` at all.
 cd frontend
 npm run build
 cd ..
-uv run uvicorn shrimp_screening.main:create_default_app \
+uv run uvicorn shrimp_server.main:create_default_app \
   --factory --host 127.0.0.1 --port 8000
 ```
 
@@ -179,8 +224,6 @@ WSSV_BG/1 → global 1, white-spot appearance (provisional)
 
 Preparation fails closed until a real reviewer inspects at least 60 generated overlays, accepts the provisional semantics and annotation-convention drift, and records the exact evidence-report SHA-256. The checked-in example is deliberately non-accepting. No boxes are fabricated; Healthy images receive empty YOLO label files.
 
-See [`datasets/README.md`](datasets/README.md) and [`datasets/DATASET_REGISTRY.md`](datasets/DATASET_REGISTRY.md).
-
 ## Model training and export
 
 Training is isolated from the Python 3.13 runtime workspace in a separately locked
@@ -189,26 +232,9 @@ Python 3.11 AGPL project. It validates the prepared dataset, trains with a gener
 static ONNX graph, checks PyTorch/ONNX parity, and creates a checksummed private
 return bundle. No weights or generated training records are committed.
 
-See [`training/README.md`](training/README.md) for the generic reproducible workflow.
-
-## Architecture documentation
-
-```bash
-cd architecture
-npm ci
-npm run format:check
-npm run validate
-npm run build
-npm run check:site
-```
-
-GitHub Pages publishes only the validated `architecture/dist` artifact—not the screening application, raw data, acceptance records or model artifacts. Open the verified site at <https://dionkcq.github.io/edge-ai-shrimp-disease-diagnostics/>. For local development, run `npm run dev -- --listen 127.0.0.1 --port 5173` from `architecture/` and open <http://127.0.0.1:5173>.
-
 ## Team
 
 OIP Group One: Dion, Johnathan, Lambert and Bryan.
-
-Development and review conventions are in [`CONTRIBUTING.md`](CONTRIBUTING.md). Report security issues privately as described in [`SECURITY.md`](SECURITY.md).
 
 ## Sources
 
@@ -218,6 +244,14 @@ Development and review conventions are in [`CONTRIBUTING.md`](CONTRIBUTING.md). 
 
 ## Licensing
 
-This repository is **not uniformly MIT-licensed**. Runtime/backend/frontend and original documentation use the licenses declared for their trees; `pipeline/` is AGPL-3.0-or-later because it is the training/data-tooling boundary. Datasets and publications retain their own licenses and attribution requirements.
+This repository carries **no root licence file**. Note that `backend/pyproject.toml` still
+declares `license = "MIT"` in its package metadata, so the two disagree about the terms —
+resolve that deliberately, in whichever direction you intend.
 
-Read [`LICENSING.md`](LICENSING.md) for the authoritative per-tree map and dependency boundary.
+`model/pipeline/` and `model/training/` are the exception and remain **AGPL-3.0-or-later**: they link
+the Ultralytics/PyTorch toolchain, so that licence is not optional. Each keeps its own
+`LICENSE.AGPL`, and the AGPL requires that text to travel with the code — do not delete
+those two files. The boundary is enforced by the backend security tests, which assert that
+nothing AGPL reaches the served application.
+
+Datasets and publications retain their own licences and attribution requirements.

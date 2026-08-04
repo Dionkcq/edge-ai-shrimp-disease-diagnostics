@@ -19,7 +19,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      'npm run build && cd .. && uv run uvicorn shrimp_screening.main:create_default_app --factory --host 127.0.0.1 --port 4173',
+      'npm run build && cd .. && uv run uvicorn shrimp_server.main:create_default_app --factory --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
     timeout: 120_000,

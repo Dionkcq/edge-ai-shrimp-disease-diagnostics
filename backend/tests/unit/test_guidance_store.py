@@ -10,11 +10,11 @@ from typing import Any
 import pytest
 
 from shrimp_screening.guidance.store import GuidanceError, parse_corpus
-from shrimp_screening.paths import guidance_dir
+from shrimp_screening.paths import data_dir
 
 
 def _document() -> dict[str, Any]:
-    return json.loads((guidance_dir() / "guidance_v1.json").read_text(encoding="utf-8"))
+    return json.loads((data_dir() / "guidance_v1.json").read_text(encoding="utf-8"))
 
 
 def _unknown_source(document: dict[str, Any]) -> None:

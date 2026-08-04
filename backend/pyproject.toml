@@ -27,12 +27,14 @@ dependencies = [
     "httpx2>=2.9",
 ]
 
-[project.scripts]
-shrimp-export-schema = "shrimp_screening.contracts.export_schema:main"
-
 [build-system]
 requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/shrimp_screening"]
+# Two packages, one distribution, one enforced direction of dependency:
+#   shrimp_server    -- the HTTP surface: routers, middleware, problem rendering
+#   shrimp_screening -- the domain: detection, imaging, policy, guidance, LLM
+# `shrimp_server` imports `shrimp_screening`; the reverse is a layering violation
+# and is checked by tests/security/test_dependency_boundary.py.
+packages = ["src/shrimp_screening", "src/shrimp_server"]

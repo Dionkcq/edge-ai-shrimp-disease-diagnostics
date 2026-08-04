@@ -22,13 +22,13 @@ import pytest
 
 from shrimp_screening.contracts.enums import DatasetMappingStatus, OutputLayout, ProviderKind
 from shrimp_screening.detection.onnx_provider import (
-    INTRA_OP_THREADS,
     ModelContractError,
     OnnxProvider,
     _session_options,
     load_onnx_provider,
 )
 from shrimp_screening.detection.registry import ModelRegistry, RegistryError
+from shrimp_screening.settings import INTRA_OP_THREADS
 from tests.support.onnx_factory import (
     SCORE_QUANTUM,
     SYNTHETIC_CLASS_NAMES,

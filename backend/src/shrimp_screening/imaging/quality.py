@@ -17,7 +17,7 @@ Three measurements, all numpy, no OpenCV:
 
 Deliberately *not* included: any judgement about whether the photograph contains a
 shrimp. There is no out-of-distribution gate in this cycle, and pretending
-otherwise here would be worse than the honest gap recorded in docs/KNOWN_GAPS.md.
+otherwise here would be worse than admitting the gap.
 """
 
 from __future__ import annotations

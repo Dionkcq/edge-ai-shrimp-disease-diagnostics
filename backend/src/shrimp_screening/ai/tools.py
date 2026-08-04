@@ -15,11 +15,11 @@ from typing import Any
 
 import anyio.to_thread
 
-from shrimp_screening.api.dependencies import AppResources
 from shrimp_screening.detection.protocol import Detection
 from shrimp_screening.imaging.intake import decode_image
 from shrimp_screening.imaging.quality import assess_quality
 from shrimp_screening.policy.decision import decide
+from shrimp_screening.resources import AppResources
 
 ToolHandler = Callable[[dict[str, Any], bytes | None], Awaitable[dict[str, Any]]]
 

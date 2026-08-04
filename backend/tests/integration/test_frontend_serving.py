@@ -6,8 +6,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from shrimp_screening.main import create_app
 from shrimp_screening.settings import Settings
+from shrimp_server.main import create_app
 
 
 def _app(frontend_dir: Path) -> object:

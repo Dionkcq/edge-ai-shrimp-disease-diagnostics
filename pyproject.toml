@@ -3,13 +3,14 @@
 # to pin the interpreter, define the uv workspace, and hold the single shared
 # configuration for ruff / mypy / pytest.
 #
-# Licensing boundary (see LICENSING.md):
-#   backend/  -> MIT runtime, must never reach an AGPL dependency
-#   pipeline/ -> AGPL-3.0-or-later development tooling, never imported by backend
+# Licensing boundary, enforced by backend/tests/security/test_dependency_boundary.py:
+#   backend/       -> MIT runtime, must never reach an AGPL dependency
+#   model/pipeline -> AGPL-3.0-or-later dataset tooling, never imported by backend
+#   model/training -> AGPL-3.0-or-later trainer, separately locked on Python 3.11
 #
 [tool.uv.workspace]
-members = ["backend", "pipeline"]
-exclude = ["training"]
+members = ["backend", "model/pipeline"]
+exclude = ["model/training"]
 
 [tool.uv]
 default-groups = ["dev"]
@@ -43,8 +44,8 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-src = ["backend/src", "pipeline/src", "training/src", "scripts"]
-extend-exclude = ["datasets/raw", "artifacts"]
+src = ["backend/src", "model/pipeline/src", "model/training/src"]
+extend-exclude = ["data/raw", "artifacts"]
 
 [tool.ruff.lint]
 select = [
@@ -80,25 +81,25 @@ ignore = [
 # The dataset split is deliberately a seeded `random.Random`: it must be byte-for-byte
 # reproducible across machines so a train/validation/test partition can be audited.
 # `secrets` is unusable here by definition, and nothing security-relevant depends on it.
-"pipeline/src/shrimp_pipeline/split.py" = ["S311"]
+"model/pipeline/src/shrimp_pipeline/split.py" = ["S311"]
 # The conversion gate and evidence renderer enumerate independent fail-closed
 # invariants. Their branch count is intentional and each branch has focused tests.
-"pipeline/src/shrimp_pipeline/convert.py" = ["S311", "PLR0912", "PLR0915"]
-"pipeline/src/shrimp_pipeline/gate.py" = ["PLR0912", "PLR0915"]
+"model/pipeline/src/shrimp_pipeline/convert.py" = ["S311", "PLR0912", "PLR0915"]
+"model/pipeline/src/shrimp_pipeline/gate.py" = ["PLR0912", "PLR0915"]
 # Return-bundle verification enumerates independent archive, path, size, schema, hash,
 # and registry invariants. Keeping them in one fail-closed verification pass is intentional.
-"training/src/shrimp_training/bundle.py" = ["PLR0912"]
+"model/training/src/shrimp_training/bundle.py" = ["PLR0912"]
 # HSV-jitter and image-order shuffling are deliberately a seeded `random.Random` for
 # reproducible training runs; nothing security-relevant depends on it.
-"training/src/shrimp_training/data.py" = ["S311"]
+"model/training/src/shrimp_training/data.py" = ["S311"]
 # The multi-scale loss assignment (one target -> exactly one globally best-matching
 # scale/anchor/cell) is one fail-closed invariant; splitting it across functions would
 # scatter it rather than keep it visibly in one place.
-"training/src/shrimp_training/loss.py" = ["PLR0915"]
+"model/training/src/shrimp_training/loss.py" = ["PLR0915"]
 # `.train()` is one linear training loop (batch/epoch iteration, AMP, gradient
 # clipping, checkpointing); splitting it would scatter one control flow across
 # several functions for no readability gain.
-"training/src/shrimp_training/adapter.py" = ["PLR0915"]
+"model/training/src/shrimp_training/adapter.py" = ["PLR0915"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
@@ -112,9 +113,9 @@ known-first-party = ["tests"]
 # ---------------------------------------------------------------------------
 # mypy -- strict on backend source, which is the code that ships
 #
-# training/src is checked separately, from training's own venv
-# (`cd training && uv run mypy`): it depends on torch, which this root workspace's
-# venv deliberately never installs (see scripts/check_no_agpl_in_runtime.py), and
+# model/training/src is checked separately, from its own venv
+# (`cd model/training && uv run mypy`): it depends on torch, which this root workspace's
+# venv deliberately never installs (see backend/tests/support/agpl_boundary.py), and
 # training's own venv gives mypy real PyTorch types instead of a blanket
 # `ignore_missing_imports`.
 # ---------------------------------------------------------------------------
@@ -126,8 +127,8 @@ warn_unused_ignores = true
 disallow_any_unimported = true
 show_error_codes = true
 pretty = true
-mypy_path = ["backend/src", "pipeline/src"]
-files = ["backend/src", "pipeline/src", "scripts"]
+mypy_path = ["backend/src", "model/pipeline/src"]
+files = ["backend/src", "model/pipeline/src"]
 
 [[tool.mypy.overrides]]
 module = ["onnxruntime.*", "onnx.*"]
@@ -154,7 +155,7 @@ disallow_any_explicit = false
 # ---------------------------------------------------------------------------
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["backend/tests", "pipeline/tests", "training/tests", "scripts/tests"]
+testpaths = ["backend/tests", "model/pipeline/tests"]
 addopts = [
     "-q",
     "--strict-markers",
@@ -162,7 +163,7 @@ addopts = [
 ]
 markers = [
     "requires_weights: needs real trained model weights, which do not exist in this repository",
-    "requires_real_archives: needs the local datasets/raw archives, which are not in Git",
+    "requires_real_archives: needs the local data/raw archives, which are not in Git",
 ]
 filterwarnings = [
     "error",
@@ -172,7 +173,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
-source = ["backend/src/shrimp_screening"]
+source = ["backend/src/shrimp_screening", "backend/src/shrimp_server"]
 
 [tool.coverage.report]
 show_missing = true

@@ -1,4 +1,4 @@
-"""`models/registry.json` is an allowlist, so every defect in it must be a refusal.
+"""`data/model_registry.json` is an allowlist, so every defect in it must be a refusal.
 
 The registry is the only thing standing between "somebody dropped a file into
 `models/`" and "the service executed it". A parser that shrugs at a malformed entry,
@@ -23,7 +23,7 @@ from shrimp_screening.detection.registry import (
     load_registry,
     sha256_of,
 )
-from shrimp_screening.paths import models_dir
+from shrimp_screening.paths import data_dir
 from tests.support.onnx_factory import registry_document, write_detect_model
 
 VALID_ENTRY: dict[str, Any] = {
@@ -71,7 +71,7 @@ def test_the_committed_registry_parses_and_vouches_for_nothing() -> None:
 
 def test_the_committed_registry_is_the_default_lookup_path() -> None:
     """`load_registry()` with no argument must read the reviewed file, not a guess."""
-    expected = models_dir() / "registry.json"
+    expected = data_dir() / "model_registry.json"
     assert expected.is_file()
     assert load_registry() == load_registry(expected)
 

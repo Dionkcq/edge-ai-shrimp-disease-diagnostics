@@ -14,9 +14,6 @@ frontend/dist/
 frontend/coverage/
 frontend/playwright-report/
 frontend/test-results/
-architecture/node_modules/
-architecture/dist/
-architecture/build/
 
 # Notebooks
 .ipynb_checkpoints/
@@ -24,23 +21,22 @@ architecture/build/
 # Secrets and local settings
 .env
 .env.*
-!.env.example
 *.key
 *.pem
 
 # Large data and model artifacts
 private/
-datasets/raw/
-datasets/processed/
-datasets/mapping_acceptance.json
+data/raw/
+data/processed/
+data/mapping_acceptance.json
 runs/
 artifacts/
-training/runs/
-training/returns/
-training/work/
+model/training/runs/
+model/training/returns/
+model/training/work/
 
 # Model weights are never committed, wherever they land. These patterns are deliberately
-# repository-wide rather than scoped to models/: the training toolchain downloads its own
+# repository-wide rather than scoped to one directory: the training toolchain downloads its own
 # assets into the working directory, so weights appear outside any anticipated location.
 # No weight file has ever been tracked, so these rules untrack nothing.
 *.pt
@@ -48,9 +44,6 @@ training/work/
 *.onnx
 *.tflite
 *.engine
-
-# Generated documentation previews
-docs/implementation-plan.html
 
 # OS/editor files
 .DS_Store

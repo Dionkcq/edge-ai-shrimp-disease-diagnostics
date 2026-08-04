@@ -11,7 +11,6 @@ response rather than being quietly indistinguishable from a real result.
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 
@@ -25,8 +24,8 @@ from shrimp_screening.contracts.enums import (
     ProviderKind,
     QualityStatus,
 )
+from shrimp_screening.contracts.screening import SCHEMA_VERSION, ScreeningResult
 from shrimp_screening.detection.fixture_provider import SCENARIOS
-from shrimp_screening.paths import contracts_dir
 from shrimp_screening.settings import Settings
 from tests.support.factories import build_app, client_for
 
@@ -102,17 +101,18 @@ def test_the_client_filename_never_reaches_the_response(jpeg_bytes: bytes) -> No
     assert "secretpondname" not in response.text.lower()
 
 
-def test_response_validates_against_the_committed_schema(jpeg_bytes: bytes) -> None:
-    """The published schema must describe what the service actually returns."""
-    schema = json.loads((contracts_dir() / "screening_result.schema.json").read_text("utf-8"))
+def test_response_matches_the_declared_contract(jpeg_bytes: bytes) -> None:
+    """The route must emit exactly what `ScreeningResult` declares.
+
+    The generated JSON Schema this used to compare against is gone; the Pydantic
+    model is now the contract itself. Re-validating the serialized body catches a
+    route that bypasses the model or adds an undeclared key.
+    """
     with client_for("unavailable") as client:
         body = _post_image(client, jpeg_bytes).json()
 
-    # Validate the parts a hand-rolled check can assert without a jsonschema
-    # dependency: required keys present, no undeclared keys, enums respected.
-    assert set(schema["required"]) <= set(body)
-    assert set(body) <= set(schema["properties"])
-    assert body["schema_version"] == schema["properties"]["schema_version"]["const"]
+    assert ScreeningResult.model_validate(body)
+    assert body["schema_version"] == SCHEMA_VERSION
 
 
 # ---------------------------------------------------------------------------

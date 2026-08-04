@@ -43,10 +43,7 @@ from shrimp_screening.detection.decode import (
 from shrimp_screening.detection.letterbox import letterbox_image
 from shrimp_screening.detection.protocol import Detection, DetectorMetadata
 from shrimp_screening.detection.registry import ModelRegistry, RegisteredModel, sha256_of
-
-#: Physical cores on the target laptop. Four threads oversubscribe MLAS on a
-#: two-core box and fight the event loop.
-INTRA_OP_THREADS = 2
+from shrimp_screening.settings import INTRA_OP_THREADS
 
 
 class ModelContractError(RuntimeError):

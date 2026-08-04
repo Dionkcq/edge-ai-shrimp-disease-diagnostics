@@ -7,11 +7,12 @@ from dataclasses import dataclass, field
 from threading import Lock
 
 from shrimp_screening.contracts.chat import ChatMessage
+from shrimp_screening.settings import MAX_CHAT_MEMORY_MESSAGES
 
 
 @dataclass
 class ConversationMemory:
-    max_messages: int = 12
+    max_messages: int = MAX_CHAT_MEMORY_MESSAGES
     _sessions: dict[str, deque[ChatMessage]] = field(default_factory=dict)
     _lock: Lock = field(default_factory=Lock)
 

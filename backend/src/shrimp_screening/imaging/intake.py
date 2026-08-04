@@ -34,18 +34,14 @@ from dataclasses import dataclass
 import numpy as np
 from PIL import Image, ImageFile, ImageOps, UnidentifiedImageError
 
-from shrimp_screening.api.errors import ApiProblemError
 from shrimp_screening.contracts.enums import ProblemCode
 from shrimp_screening.contracts.screening import ImageInfo
-
-#: Mirrors ``Settings.max_upload_bytes``; repeated here so a direct call to
-#: ``decode_image`` in a test or a script is bounded too.
-MAX_UPLOAD_BYTES = 12 * 1024 * 1024
-
-#: 40 Mpx is comfortably above a 2048x2048 phone capture and far below the point
-#: where a decode would matter for memory on a two-core laptop.
-MAX_IMAGE_PIXELS = 40_000_000
-MAX_DIMENSION = 8_000
+from shrimp_screening.problems import ApiProblemError
+from shrimp_screening.settings import (
+    DEFAULT_MAX_UPLOAD_BYTES,
+    MAX_DIMENSION,
+    MAX_IMAGE_PIXELS,
+)
 
 Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 ImageFile.LOAD_TRUNCATED_IMAGES = False
@@ -144,7 +140,7 @@ def _check_pixel_bounds(width: int, height: int) -> None:
         )
 
 
-def decode_image(data: bytes, *, max_bytes: int = MAX_UPLOAD_BYTES) -> DecodedImage:
+def decode_image(data: bytes, *, max_bytes: int = DEFAULT_MAX_UPLOAD_BYTES) -> DecodedImage:
     """Decode an untrusted JPEG or PNG into a normalized RGB array."""
     if not data:
         raise _reject(ProblemCode.UNDECODABLE_IMAGE, "The uploaded photograph is empty.", 422)

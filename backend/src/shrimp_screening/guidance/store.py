@@ -23,7 +23,7 @@ from typing import Any
 
 from shrimp_screening.contracts.enums import Decision
 from shrimp_screening.guidance.lexicon import assert_clean
-from shrimp_screening.paths import guidance_dir
+from shrimp_screening.paths import data_dir
 
 #: The only review status this corpus is entitled to claim. Widening this set is a
 #: deliberate act that should accompany an actual expert review.
@@ -161,7 +161,7 @@ def parse_corpus(document: Any) -> GuidanceCorpus:
 @lru_cache(maxsize=1)
 def load_guidance(path: Path | None = None) -> GuidanceCorpus:
     """Load and validate ``guidance/guidance_v1.json``."""
-    source = path if path is not None else guidance_dir() / "guidance_v1.json"
+    source = path if path is not None else data_dir() / "guidance_v1.json"
     try:
         document = json.loads(source.read_text(encoding="utf-8"))
     except OSError as exc:

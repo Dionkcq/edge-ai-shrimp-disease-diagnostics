@@ -14,8 +14,7 @@ from typing import Any
 
 import httpx2 as httpx
 
-#: Ollama's own default port for a local, unauthenticated server.
-DEFAULT_BASE_URL = "http://127.0.0.1:11434"
+from shrimp_screening.settings import DEFAULT_LLM_BASE_URL
 
 _GENERATE_PATH = "/api/generate"
 
@@ -30,7 +29,7 @@ class OllamaClient:
     def __init__(
         self,
         *,
-        base_url: str = DEFAULT_BASE_URL,
+        base_url: str = DEFAULT_LLM_BASE_URL,
         model: str,
         timeout_seconds: float,
         transport: httpx.AsyncBaseTransport | None = None,

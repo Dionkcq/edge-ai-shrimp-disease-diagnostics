@@ -22,11 +22,11 @@ from PIL import Image
 
 from shrimp_screening.contracts.enums import ProblemCode
 from shrimp_screening.imaging.intake import (
-    MAX_DIMENSION,
     IntakeError,
     decode_image,
     sniff_format,
 )
+from shrimp_screening.settings import MAX_DIMENSION
 from tests.support.factories import client_for, make_image_bytes
 
 # ---------------------------------------------------------------------------

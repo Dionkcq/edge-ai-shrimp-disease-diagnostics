@@ -32,9 +32,7 @@ import numpy as np
 from shrimp_screening.detection.letterbox import LetterboxTransform
 from shrimp_screening.detection.nms import class_aware_nms
 from shrimp_screening.detection.protocol import Detection
-
-#: Ceiling on the candidates fed into NMS, mirroring Ultralytics' ``max_nms``.
-MAX_NMS_CANDIDATES = 30_000
+from shrimp_screening.settings import MAX_NMS_CANDIDATES
 
 #: Strides and anchors-per-scale for CUSTOM_YOLO_ANCHOR_V1. Mirrors
 #: ``training/src/shrimp_training/model.py::STRIDES`` and

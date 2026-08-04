@@ -3,8 +3,6 @@
 `contracts/screening_result.schema.json` is generated from these models and committed;
 a drift test regenerates and byte-compares it. Frontend types will be generated from
 that schema in a later slice, so any change here is a deliberate contract change.
-
-Versioning rules live in `contracts/CONTRACT.md`.
 """
 
 from __future__ import annotations
@@ -26,7 +24,7 @@ from shrimp_screening.contracts.enums import (
     QualityStatus,
 )
 
-#: Bumped on any breaking change to the response shape. See contracts/CONTRACT.md.
+#: Bumped on any breaking change to the response shape.
 #: Typed as the literal it is so that the `schema_version` field default and the
 #: exported JSON Schema's `const` cannot drift apart without a type error.
 SCHEMA_VERSION: Final[Literal["1.0.0"]] = "1.0.0"

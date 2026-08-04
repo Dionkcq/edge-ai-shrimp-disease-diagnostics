@@ -32,6 +32,7 @@ from shrimp_screening.guidance.lexicon import scan
 from shrimp_screening.guidance.store import GuidanceItem
 from shrimp_screening.llm.client import OllamaClient, OllamaError
 from shrimp_screening.llm.prompts import SYSTEM_PROMPT, build_prompt
+from shrimp_screening.settings import MAX_ADVICE_ITEMS_PER_LIST
 
 #: Disclosed on every generated response so a client cannot render the advice
 #: without also rendering the fact that it is unreviewed AI output.
@@ -42,10 +43,6 @@ REVIEW_NOTE = (
     "health professional, may omit relevant considerations, and is not veterinary, "
     "medical or regulatory advice. It will never name a medication, chemical or dose."
 )
-
-#: A quantized 7B model asked for "one to six" items can still overshoot; this is
-#: a hard backstop, not the prompt's request.
-_MAX_ITEMS_PER_LIST = 6
 
 _REQUIRED_LIST_FIELDS = ("immediate_actions", "prevention_actions")
 
@@ -73,7 +70,7 @@ def _string_list(payload: dict[str, object], key: str, *, required: bool) -> tup
     items = tuple(str(item).strip() for item in value if str(item).strip())
     if required and not items:
         raise AdviceGenerationError(f"the model's response had no usable {key!r}")
-    return items[:_MAX_ITEMS_PER_LIST]
+    return items[:MAX_ADVICE_ITEMS_PER_LIST]
 
 
 def _parse(raw: str) -> AdviceContent:

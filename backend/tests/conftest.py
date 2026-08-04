@@ -10,6 +10,7 @@ photograph, a trained model or anything else that is absent from a clean clone.
 from __future__ import annotations
 
 import io
+import shutil
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -17,15 +18,11 @@ import pytest
 from PIL import Image
 
 from shrimp_screening.guidance.store import load_guidance
-from shrimp_screening.limitations import load_limitations
 from shrimp_screening.paths import repository_root
 from tests.support.factories import make_image_bytes
 
 #: The repository root as seen from this file: backend/tests/conftest.py -> ../..
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-
-#: Data directories a relocated root can borrow from this checkout unchanged.
-_BORROWED_DIRECTORIES = ("policy", "guidance", "docs", "contracts")
 
 _EMPTY_REGISTRY = '{\n  "schema_version": "1.0.0",\n  "models": []\n}\n'
 
@@ -53,35 +50,38 @@ def no_ambient_provider_configuration(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 def cleared_document_caches() -> Iterator[None]:
-    """Drop the `lru_cache` on the guidance corpus and the limitations document.
+    """Drop the `lru_cache` on the guidance corpus.
 
-    Both are `lru_cache(maxsize=1)` keyed on the path argument, so a test that loads
-    a `tmp_path` document evicts the default entry and the *next* test to ask for the
+    It is `lru_cache(maxsize=1)` keyed on the path argument, so a test that loads a
+    `tmp_path` document evicts the default entry and the *next* test to ask for the
     real one would be handed whatever the previous test wrote.
     """
     load_guidance.cache_clear()
-    load_limitations.cache_clear()
     yield
     load_guidance.cache_clear()
-    load_limitations.cache_clear()
 
 
 @pytest.fixture
 def relocated_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     """A writable repository root that borrows this checkout's reviewed data.
 
-    `policy/`, `guidance/`, `docs/` and `contracts/` are symlinked so a test cannot
-    accidentally prove something against invented thresholds or invented guidance.
-    Only `models/registry.json` is a real file, because registering an artifact is
-    the one thing a test legitimately needs to vary -- and it must never happen in
-    the committed registry.
+    `data/` is copied rather than invented, so a test cannot accidentally prove
+    something against made-up thresholds or made-up guidance. It is a copy rather
+    than a symlink because the model registry is overwritten below: registering an
+    artifact is the one thing a test legitimately needs to vary, and it must never
+    reach the committed registry.
+
+    `data/raw/` is skipped -- it holds the multi-hundred-megabyte source archives on
+    a developer machine and nothing in the runtime reads it.
     """
     root = tmp_path / "relocated-root"
     root.mkdir()
-    for name in _BORROWED_DIRECTORIES:
-        (root / name).symlink_to(_REPO_ROOT / name, target_is_directory=True)
-    (root / "models").mkdir()
-    (root / "models" / "registry.json").write_text(_EMPTY_REGISTRY, encoding="utf-8")
+    shutil.copytree(
+        _REPO_ROOT / "data",
+        root / "data",
+        ignore=shutil.ignore_patterns("raw", "processed"),
+    )
+    (root / "data" / "model_registry.json").write_text(_EMPTY_REGISTRY, encoding="utf-8")
 
     monkeypatch.setenv("SHRIMP_REPO_ROOT", str(root))
     repository_root.cache_clear()

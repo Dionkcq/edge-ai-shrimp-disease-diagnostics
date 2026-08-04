@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from shrimp_screening.contracts.enums import DatasetMappingStatus, OutputLayout
-from shrimp_screening.paths import models_dir
+from shrimp_screening.paths import data_dir
 
 _SHA256_LENGTH = 64
 _ENTRY_FIELDS = {
@@ -210,7 +210,7 @@ def _parse_model(entry: Any) -> RegisteredModel:
 
 def load_registry(path: Path | None = None) -> ModelRegistry:
     """Parse ``models/registry.json``. Raises :class:`RegistryError` on any defect."""
-    source = path if path is not None else models_dir() / "registry.json"
+    source = path if path is not None else data_dir() / "model_registry.json"
     try:
         document = json.loads(source.read_text(encoding="utf-8"))
     except OSError as exc:
