@@ -96,6 +96,16 @@ npm run check
 npm run test:e2e
 ```
 
+### Configure
+
+```bash
+cp .env.example .env
+```
+
+Uncomment and edit whatever you need in `.env` (provider, ONNX model path, local
+advice generation, ...). Every setting has a safe default, so an unedited `.env`
+behaves the same as no `.env` at all.
+
 ### Build the interface and start FastAPI
 
 ```bash
@@ -132,6 +142,26 @@ never consulted for the screening decision itself:
 - If Ollama is not running, unreachable, or the model is not pulled, the
   endpoint answers `503 ADVICE_UNAVAILABLE` with `Retry-After`, the same way the
   rest of this API fails explicitly rather than degrading silently.
+
+`GET /api/v1/meta` reports `advice_available`, so a client knows whether the
+feature exists on this build instead of discovering it by asking and failing.
+
+In the interface, advice appears as an opt-in panel below the reviewed guidance,
+never in place of it:
+
+- The panel is rendered only when `advice_available` is true, and nothing is
+  requested until a person presses **Generate explanation**. Generation runs on a
+  local model and takes seconds to tens of seconds, so it is never a side effect
+  of screening a photograph.
+- The `AI GENERATED · NOT REVIEWED` banner and `review_note` precede the
+  generated text in document order. The client validates `review_status`,
+  `review_note` and `provider` as strictly as the content itself and refuses a
+  body that arrives without them, so there is no state in which unreviewed text
+  renders undisclosed.
+- Generated text belongs to exactly one screening result and is dropped when a
+  new photograph is chosen or submitted.
+- A failed generation is confined to this panel and reported there; the cited
+  guidance above it is unaffected.
 
 To use it locally: install Ollama, `ollama pull qwen2.5:7b-instruct-q4_0`, then
 set `SHRIMP_LLM_ENABLED=true` before starting the FastAPI service.
