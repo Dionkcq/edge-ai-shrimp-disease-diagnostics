@@ -41,6 +41,24 @@ def test_extracts_ultralytics_metadata_without_sidecar(tmp_path: Path) -> None:
     assert entry["opset"] == 17
 
 
+def test_normalises_exporter_license_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "model.onnx"
+    _write_model(
+        path,
+        metadata={
+            "task": "detect",
+            "names": json.dumps({"0": "dark_gill", "1": "white_spot"}),
+            "license": "AGPL-3.0 License",
+            "training_toolchain": "YOLO exporter",
+        },
+    )
+
+    entry = extract_model_entry(path)
+
+    assert entry["artifact_license"] == "AGPL-3.0-or-later"
+    assert entry["training_toolchain"] == "ultralytics-auto"
+
+
 def test_custom_anchor_model_requires_embedded_anchors(tmp_path: Path) -> None:
     path = tmp_path / "model.onnx"
     _write_model(

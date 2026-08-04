@@ -80,6 +80,25 @@ def _anchors(values: dict[str, str]) -> list[list[float]]:
     return parsed
 
 
+def _normalise_license(values: dict[str, str]) -> str:
+    raw = values.get("artifact_license") or values.get("license")
+    if not raw:
+        return "UNDECLARED"
+    lowered = raw.casefold()
+    if "enterprise" in lowered and "ultralytics" in lowered:
+        return "LicenseRef-Ultralytics-Enterprise"
+    if "agpl" in lowered:
+        return "AGPL-3.0-or-later"
+    return "UNDECLARED"
+
+
+def _normalise_toolchain(values: dict[str, str], default: str) -> str:
+    raw = values.get("training_toolchain", "").strip()
+    if raw.casefold().startswith(("ultralytics", "custom-pytorch-yolo")):
+        return raw
+    return default
+
+
 def extract_model_entry(model_path: Path) -> dict[str, Any]:
     """Return the registry entry needed by the backend, without a sidecar file."""
     try:
@@ -126,8 +145,8 @@ def extract_model_entry(model_path: Path) -> dict[str, Any]:
     if opsets != [17]:
         raise MetadataError(f"ONNX opset must be 17, found {opsets or 'none'}")
 
-    artifact_license = values.get("artifact_license") or values.get("license") or "UNDECLARED"
-    toolchain = values.get("training_toolchain", default_toolchain)
+    artifact_license = _normalise_license(values)
+    toolchain = _normalise_toolchain(values, default_toolchain)
     mapping_status = values.get("dataset_mapping_status", "PROVISIONAL_UNCONFIRMED")
     return {
         "model_id": values.get("model_id", model_path.stem),
