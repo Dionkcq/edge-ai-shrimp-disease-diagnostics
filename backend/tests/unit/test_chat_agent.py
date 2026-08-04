@@ -36,6 +36,19 @@ class FakeClient:
         return {"message": {"role": "assistant", "content": "The image was screened cautiously."}}
 
 
+class NoToolFirstClient:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def chat(
+        self, *, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        self.calls += 1
+        if self.calls == 1:
+            return {"message": {"role": "assistant", "content": "Please upload an image."}}
+        return {"message": {"role": "assistant", "content": "The image was screened."}}
+
+
 @pytest.mark.anyio
 async def test_agent_dispatches_model_tool_call_and_keeps_short_memory() -> None:
     invoked: list[dict[str, Any]] = []
@@ -71,6 +84,38 @@ async def test_agent_dispatches_model_tool_call_and_keeps_short_memory() -> None
     assert [message.role for message in messages] == ["user", "tool", "assistant"]
     assert len(client.calls) == 2
     assert client.calls[1][-1]["role"] == "tool"
+
+
+@pytest.mark.anyio
+async def test_agent_falls_back_to_screening_when_model_omits_tool_call() -> None:
+    invoked: list[bytes | None] = []
+
+    async def screen(arguments: dict[str, Any], image: bytes | None) -> dict[str, Any]:
+        invoked.append(image)
+        return {"status": "screened", "decision": "UNABLE_TO_ASSESS"}
+
+    registry = ToolRegistry(
+        (
+            ToolSpec(
+                name="screen_shrimp_image",
+                description="Screen the uploaded image.",
+                parameters={"type": "object"},
+                handler=screen,
+            ),
+        )
+    )
+    client = NoToolFirstClient()
+    agent = ScreeningAgent(client, registry)
+
+    reply, _, _, records, result = await agent.run(
+        session_id=None, message="How do I treat this?", image=b"image-bytes"
+    )
+
+    assert reply == "The image was screened."
+    assert invoked == [b"image-bytes"]
+    assert [record.name for record in records] == ["screen_shrimp_image"]
+    assert result == {"status": "screened", "decision": "UNABLE_TO_ASSESS"}
+    assert client.calls == 2
 
 
 def test_memory_evicts_old_turns_and_can_clear_session() -> None:

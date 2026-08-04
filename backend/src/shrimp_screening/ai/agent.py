@@ -15,8 +15,8 @@ from shrimp_screening.llm.client import OllamaError
 class ChatModel(Protocol):
     async def chat(
         self, *, messages: list[dict[str, Any]], tools: list[dict[str, Any]]
-    ) -> dict[str, Any]:
-        ...
+    ) -> dict[str, Any]: ...
+
 
 _SYSTEM = (
     "You are Pondside screen, an offline shrimp-image screening assistant. "
@@ -47,9 +47,16 @@ class ScreeningAgent:
         self._memory.append(active_session, user_message)
         tool_records: list[ToolCallRecord] = []
         tool_result: dict[str, Any] | None = None
+        image_screened = False
         for _ in range(3):
+            image_context = (
+                " An image is attached to the current user turn. Use the CNN screening tool "
+                "before answering questions about that image."
+                if image is not None and not image_screened
+                else ""
+            )
             history = [
-                {"role": "system", "content": _SYSTEM},
+                {"role": "system", "content": _SYSTEM + image_context},
                 *[
                     {"role": item.role, "content": item.content}
                     for item in self._memory.recent(active_session)
@@ -59,6 +66,19 @@ class ScreeningAgent:
             model_message = response["message"]
             calls = model_message.get("tool_calls", [])
             if not isinstance(calls, list) or not calls:
+                if image is not None and not image_screened:
+                    tool_result = await self._tools.invoke(
+                        "screen_shrimp_image", {"reason": user_text}, image
+                    )
+                    image_screened = True
+                    tool_records.append(
+                        ToolCallRecord(name="screen_shrimp_image", status="completed")
+                    )
+                    self._memory.append(
+                        active_session,
+                        ChatMessage(role="tool", content=json.dumps(tool_result, sort_keys=True)),
+                    )
+                    continue
                 reply = str(model_message.get("content", "")).strip()
                 if not reply:
                     raise OllamaError("the local assistant returned no reply")
@@ -80,6 +100,7 @@ class ScreeningAgent:
                 if not isinstance(arguments, dict):
                     raise OllamaError("the assistant returned invalid tool arguments")
                 tool_result = await self._tools.invoke(name, arguments, image)
+                image_screened = image_screened or name == "screen_shrimp_image"
                 tool_records.append(ToolCallRecord(name=name, status="completed"))
                 self._memory.append(
                     active_session,
