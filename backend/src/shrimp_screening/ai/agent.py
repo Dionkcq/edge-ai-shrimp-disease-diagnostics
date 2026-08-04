@@ -7,6 +7,7 @@ import uuid
 from typing import Any, Protocol
 
 from shrimp_screening.ai.memory import ConversationMemory
+from shrimp_screening.ai.replies import guard_chat_reply
 from shrimp_screening.ai.tools import ToolRegistry
 from shrimp_screening.contracts.chat import ChatMessage, ToolCallRecord
 from shrimp_screening.llm.client import OllamaError
@@ -20,10 +21,13 @@ class ChatModel(Protocol):
 
 _SYSTEM = (
     "You are Pondside screen, an offline shrimp-image screening assistant. "
+    "Every question in this application concerns shrimp aquaculture, never human health. "
+    "Do not refer to doctors, patients, medical care, or healthcare professionals. "
     "Be concise and cautious. You may describe visible markers, never claim a diagnosis, "
-    "and never invent a result. When the user asks to inspect an uploaded image, call "
-    "screen_shrimp_image. After the tool returns, explain the result in plain language and "
-    "say when the image should be reviewed by a qualified person."
+    "never invent a result, and never recommend medication, chemicals, or dosing. When the "
+    "user asks to inspect or treat something in an uploaded image, call screen_shrimp_image. "
+    "The backend renders image results from cited local guidance rather than free-form prose. "
+    "For escalation, say 'qualified aquatic-animal health professional'."
 )
 
 
@@ -50,7 +54,7 @@ class ScreeningAgent:
         image_screened = False
         for _ in range(3):
             image_context = (
-                " An image is attached to the current user turn. Use the CNN screening tool "
+                " An image is attached to the current user turn. Use the image screening tool "
                 "before answering questions about that image."
                 if image is not None and not image_screened
                 else ""
@@ -78,10 +82,18 @@ class ScreeningAgent:
                         active_session,
                         ChatMessage(role="tool", content=json.dumps(tool_result, sort_keys=True)),
                     )
-                    continue
-                reply = str(model_message.get("content", "")).strip()
-                if not reply:
-                    raise OllamaError("the local assistant returned no reply")
+                    reply = guard_chat_reply("", tool_result, user_message=user_text)
+                    assistant_message = ChatMessage(role="assistant", content=reply)
+                    self._memory.append(active_session, assistant_message)
+                    return (
+                        reply,
+                        active_session,
+                        self._memory.recent(active_session),
+                        tool_records,
+                        tool_result,
+                    )
+                raw_reply = str(model_message.get("content", "")).strip()
+                reply = guard_chat_reply(raw_reply, tool_result, user_message=message)
                 assistant_message = ChatMessage(role="assistant", content=reply)
                 self._memory.append(active_session, assistant_message)
                 return (
@@ -105,5 +117,16 @@ class ScreeningAgent:
                 self._memory.append(
                     active_session,
                     ChatMessage(role="tool", content=json.dumps(tool_result, sort_keys=True)),
+                )
+            if image_screened and tool_result is not None:
+                reply = guard_chat_reply("", tool_result, user_message=user_text)
+                assistant_message = ChatMessage(role="assistant", content=reply)
+                self._memory.append(active_session, assistant_message)
+                return (
+                    reply,
+                    active_session,
+                    self._memory.recent(active_session),
+                    tool_records,
+                    tool_result,
                 )
         raise OllamaError("the assistant exceeded the tool-call limit")

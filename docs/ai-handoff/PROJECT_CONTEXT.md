@@ -112,7 +112,16 @@ The LLM has one declared tool:
 screen_shrimp_image
 ```
 
-The tool runs image quality checks, the configured detector, and the deterministic screening policy. The LLM is an orchestrator/explainer; it does not decide the screening result.
+The tool runs image quality checks, the configured detector, and the deterministic screening policy. The LLM may request the tool, but it does not author user-facing pond-side replies or decide the screening result.
+
+The tool result also carries the matching cited local guidance item, its explicit
+review status and source titles. Every image-result reply is constructed
+deterministically from that payload; the backend does not ask the model for a second
+free-form answer. This prevents generic human-health language, invented pond actions
+and unsupported diagnosis/treatment content from reaching the user. Refer users to
+a qualified aquatic-animal health professional, never a doctor or healthcare
+professional. Every no-image turn fails closed to an upload prompt; no free-form
+model reply crosses the pond-side chat boundary.
 
 A chat turn with an attached image normally stores three bounded records:
 

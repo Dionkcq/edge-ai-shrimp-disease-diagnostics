@@ -162,7 +162,7 @@ never consulted for the screening decision itself:
 `GET /api/v1/meta` reports `advice_available`, so a client knows whether the
 feature exists on this build instead of discovering it by asking and failing.
 
-In the interface, advice appears as an opt-in panel below the reviewed guidance,
+In the interface, advice appears as an opt-in panel below the cited local guidance,
 never in place of it:
 
 - The panel is rendered only when `advice_available` is true, and nothing is
@@ -181,6 +181,22 @@ never in place of it:
 
 To use it locally: install Ollama, `ollama pull qwen2.5:7b-instruct-q4_0`, then
 set `SHRIMP_LLM_ENABLED=true` before starting the FastAPI service.
+
+### Pond-side chat grounding
+
+`POST /api/v1/chat` may use the local Qwen model to request the screening tool; it
+does not make detector output or guidance authoritative. An attached image is
+screened before the assistant may answer about it, even when the model omits the
+tool call. The tool result includes the matching cited local guidance item, its
+review status and source titles.
+
+Every image-result reply is then constructed deterministically from that tool
+payload. There is no second free-form model pass that can replace the detector
+result, invent pond actions or drift into human healthcare. When there is no screening
+result, chat always fails closed to an upload prompt instead of returning model prose.
+Escalation is always framed as a qualified aquatic-animal health professional. The
+LLM does not author a user-facing pond-side answer, decide a screening result or
+prescribe treatment.
 
 ## Dataset preparation
 

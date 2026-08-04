@@ -43,13 +43,7 @@ def test_chat_runs_model_tool_model_loop_and_returns_memory(tmp_path: Path) -> N
                     }
                 ],
             }
-        },
-        {
-            "message": {
-                "role": "assistant",
-                "content": "The photo was checked, but I cannot assess it.",
-            }
-        },
+        }
     ]
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -75,7 +69,21 @@ def test_chat_runs_model_tool_model_loop_and_returns_memory(tmp_path: Path) -> N
 
     assert response.status_code == 200
     body = response.json()
-    assert body["reply"] == "The photo was checked, but I cannot assess it."
+    assert body["reply"].startswith("The image could not be assessed.")
+    assert body["tool_result"]["guidance"]["body"] in body["reply"]
+    assert "Declared limitations of this screening system" in body["reply"]
+    assert body["tool_result"]["guidance"]["review_note"] in body["reply"]
     assert body["tool_calls"] == [{"name": "screen_shrimp_image", "status": "completed"}]
     assert body["tool_result"]["status"] == "abstained"
-    assert [item["role"] for item in body["messages"]] == ["user", "tool", "assistant"]
+    assert body["tool_result"]["guidance"]["decision"] == "UNABLE_TO_ASSESS"
+    assert body["tool_result"]["guidance"]["body"]
+    assert body["tool_result"]["guidance"]["sources"] == [
+        {
+            "id": "project-limitations",
+            "title": "Declared limitations of this screening system",
+            "publisher": "OIP Group One",
+            "url": "docs/LIMITATIONS.md",
+        }
+    ]
+    assert [message["role"] for message in body["messages"]] == ["user", "tool", "assistant"]
+    assert responses == []

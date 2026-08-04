@@ -16,12 +16,35 @@ from typing import Any
 import anyio.to_thread
 
 from shrimp_screening.api.dependencies import AppResources
+from shrimp_screening.contracts.enums import Decision
 from shrimp_screening.detection.protocol import Detection
 from shrimp_screening.imaging.intake import decode_image
 from shrimp_screening.imaging.quality import assess_quality
 from shrimp_screening.policy.decision import decide
 
 ToolHandler = Callable[[dict[str, Any], bytes | None], Awaitable[dict[str, Any]]]
+
+
+def _guidance_payload(resources: AppResources, decision: Decision) -> dict[str, Any]:
+    """Return cited local guidance plus its explicit review status."""
+    item = resources.guidance.for_decision(decision)
+    return {
+        "decision": decision.value,
+        "id": item.guidance_id,
+        "headline": item.headline,
+        "body": item.body,
+        "review_status": resources.guidance.review_status,
+        "review_note": resources.guidance.review_note,
+        "sources": [
+            {
+                "id": source.source_id,
+                "title": source.title,
+                "publisher": source.publisher,
+                "url": source.url,
+            }
+            for source in resources.guidance.citations_for(decision)
+        ],
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +95,7 @@ async def screen_image_tool(
             "quality_status": quality.status.value,
             "quality_reasons": [reason.value for reason in quality.reasons],
             "model_available": resources.detector.metadata.available,
+            "guidance": _guidance_payload(resources, Decision.UNABLE_TO_ASSESS),
         }
     await asyncio.wait_for(
         resources.inference_gate.acquire(), timeout=resources.settings.queue_wait_timeout_seconds
@@ -104,6 +128,7 @@ async def screen_image_tool(
         ],
         "model_id": resources.detector.metadata.model_id,
         "provider": resources.detector.metadata.provider.value,
+        "guidance": _guidance_payload(resources, outcome.decision),
     }
 
 
