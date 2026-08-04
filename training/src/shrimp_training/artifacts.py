@@ -7,14 +7,13 @@ import ast
 import hashlib
 import json
 import math
+import shutil
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from importlib import import_module
 from pathlib import Path
 from typing import Any, Protocol, cast
 
-from shrimp_training.adapter import CustomYoloModel
-from shrimp_training.anchors import ANCHORS_PER_SCALE, AnchorSet
 from shrimp_training.config import TrainingProfile
 from shrimp_training.dataset import validate_prepared_dataset
 
@@ -143,7 +142,11 @@ def _sha256(path: Path) -> str:
 
 
 def _model_factory(artifact: Path) -> ArtifactModel:
-    return cast(ArtifactModel, CustomYoloModel(weights=artifact))
+    module = import_module("ultralytics")
+    constructor = getattr(module, "YOLO", None)
+    if constructor is None:
+        raise ArtifactError("the installed ultralytics package exposes no YOLO constructor")
+    return cast(ArtifactModel, constructor(str(artifact)))
 
 
 def _finite_float(value: Any, label: str) -> float:
@@ -219,32 +222,29 @@ def _write_json_exclusive(path: Path, document: dict[str, Any]) -> None:
 
 def evaluate_artifact(
     artifact: Path,
+    dataset_yaml: Path,
     profile: TrainingProfile,
     destination: Path,
     *,
-    anchors: AnchorSet,
     prepared_root: Path,
     model_factory: ArtifactModelFactory = _model_factory,
 ) -> EvaluationSummary:
-    """Evaluate one PT or ONNX artifact against the locked test partition.
-
-    There is no separate Ultralytics-style dataset descriptor file anymore --
-    ``prepared_root`` (the prepared dataset directory, containing ``manifest.json``)
-    is both the evaluation input and the thing ``dataset_descriptor_sha256`` binds
-    to, so it is hashed directly from the manifest.
-    """
-    if not artifact.is_file():
-        raise ArtifactError("evaluation requires an artifact")
+    """Evaluate one PT or ONNX artifact against the locked test partition."""
+    if not artifact.is_file() or not dataset_yaml.is_file():
+        raise ArtifactError("evaluation requires an artifact and dataset descriptor")
     before = validate_prepared_dataset(prepared_root)
     result = model_factory(artifact).val(
-        data=str(prepared_root),
+        data=str(dataset_yaml),
         split="test",
         imgsz=profile.image_size,
+        batch=1,
         device="cpu" if artifact.suffix.casefold() == ".onnx" else profile.device,
-        anchors=anchors,
+        workers=profile.workers,
+        plots=True,
+        save_json=True,
     )
     if not isinstance(result.results_dict, dict):
-        raise ArtifactError("evaluation returned no metric dictionary")
+        raise ArtifactError("Ultralytics returned no metric dictionary")
     metrics = {
         name: _unit_float(result.results_dict.get(source), source)
         for name, source in _METRIC_KEYS.items()
@@ -264,7 +264,7 @@ def evaluate_artifact(
         raise ArtifactError("prepared dataset changed during evaluation")
     summary = EvaluationSummary(
         artifact_sha256=_sha256(artifact),
-        dataset_descriptor_sha256=before.manifest_sha256,
+        dataset_descriptor_sha256=_sha256(dataset_yaml),
         prepared_manifest_sha256=before.manifest_sha256,
         dataset_inventory_sha256=before.inventory_sha256,
         test_image_count=before.split_counts["test"],
@@ -298,23 +298,33 @@ def export_static_onnx(
     *,
     model_factory: ArtifactModelFactory = _model_factory,
 ) -> Path:
-    """Export a static, raw-head ONNX graph matching the MIT runtime decoder.
-
-    The adapter's ``.export()`` writes directly to ``destination`` with its own
-    no-clobber/atomic-replace discipline, so there is no separate copy step.
-    """
+    """Export a static, raw-head ONNX graph matching the MIT runtime decoder."""
     if not checkpoint.is_file():
         raise ArtifactError(f"checkpoint does not exist: {checkpoint}")
     exported = Path(
         model_factory(checkpoint).export(
-            destination=destination,
+            format="onnx",
             imgsz=profile.image_size,
             opset=17,
+            dynamic=False,
+            simplify=False,
+            nms=False,
+            batch=1,
+            device="cpu",
         )
     )
     if not exported.is_file():
-        raise ArtifactError(f"export did not create its reported ONNX file: {exported}")
-    return exported
+        raise ArtifactError(f"Ultralytics did not create its reported ONNX file: {exported}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with exported.open("rb") as source, destination.open("xb") as target:
+            shutil.copyfileobj(source, target, length=1024 * 1024)
+    except FileExistsError:
+        raise
+    except OSError as exc:
+        destination.unlink(missing_ok=True)
+        raise ArtifactError(f"cannot copy exported ONNX artifact to {destination}") from exc
+    return destination
 
 
 class _Node(Protocol):
@@ -370,8 +380,8 @@ def validate_onnx_contract(
         raise ArtifactError("ONNX input shape is not the pinned static runtime shape")
     if inputs[0].type != "tensor(float)":
         raise ArtifactError("ONNX input type is not float32")
-    anchors = ANCHORS_PER_SCALE * sum((image_size // stride) ** 2 for stride in (8, 16, 32))
-    expected_output = (1, 5 + len(_EXPECTED_NAMES), anchors)
+    anchors = sum((image_size // stride) ** 2 for stride in (8, 16, 32))
+    expected_output = (1, 4 + len(_EXPECTED_NAMES), anchors)
     if len(outputs) != 1 or _static_shape(outputs[0].shape) != expected_output:
         raise ArtifactError(f"ONNX output shape is not {expected_output}")
     metadata = session.get_modelmeta().custom_metadata_map

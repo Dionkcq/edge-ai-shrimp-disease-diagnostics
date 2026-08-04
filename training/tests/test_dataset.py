@@ -7,7 +7,11 @@ from typing import Any
 
 import pytest
 
-from shrimp_training.dataset import DatasetContractError, validate_prepared_dataset
+from shrimp_training.dataset import (
+    DatasetContractError,
+    validate_prepared_dataset,
+    write_ultralytics_dataset,
+)
 
 
 def _sha(path: Path) -> str:
@@ -163,3 +167,23 @@ def test_validate_prepared_dataset_rejects_malformed_label(tmp_path: Path) -> No
 
     with pytest.raises(DatasetContractError, match="label"):
         validate_prepared_dataset(root)
+
+
+def test_write_ultralytics_dataset_is_deterministic_and_refuses_overwrite(tmp_path: Path) -> None:
+    prepared = validate_prepared_dataset(_prepared(tmp_path / "prepared"))
+    destination = tmp_path / "private" / "dataset.yaml"
+
+    result = write_ultralytics_dataset(prepared, destination)
+
+    assert result == destination
+    assert destination.read_text(encoding="utf-8") == (
+        f'path: "{prepared.root.as_posix()}"\n'
+        "train: images/train\n"
+        "val: images/validation\n"
+        "test: images/test\n"
+        "names:\n"
+        "  0: dark_gill\n"
+        "  1: white_spot\n"
+    )
+    with pytest.raises(FileExistsError):
+        write_ultralytics_dataset(prepared, destination)

@@ -8,7 +8,7 @@ import pytest
 
 from shrimp_training import cli
 from shrimp_training.acceptance import AcceptanceError
-from shrimp_training.cli import build_parser
+from shrimp_training.cli import BASE_WEIGHTS_SHA256, build_parser
 
 
 def test_run_all_parser_requires_explicit_private_inputs_and_version() -> None:
@@ -19,6 +19,8 @@ def test_run_all_parser_requires_explicit_private_inputs_and_version() -> None:
             "private/prepared",
             "--mapping-acceptance",
             "private/acceptance.json",
+            "--initial-weights",
+            "private/yolo11n.pt",
             "--profile",
             "training/configs/compact-nvidia-6gb.json",
             "--work-dir",
@@ -33,7 +35,7 @@ def test_run_all_parser_requires_explicit_private_inputs_and_version() -> None:
     assert args.dataset_root == Path("private/prepared")
     assert args.mapping_acceptance == Path("private/acceptance.json")
     assert args.parity_tolerance == 0.01
-    assert args.model_id == "shrimp-marker-custom-yolo"
+    assert len(BASE_WEIGHTS_SHA256) == 64
 
 
 def test_preflight_and_verify_bundle_commands_parse_paths() -> None:
@@ -70,8 +72,11 @@ def test_run_all_rejects_acceptance_before_preflight_or_work_creation(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     manifest = tmp_path / "prepared" / "manifest.json"
+    weights = tmp_path / "yolo11n.pt"
+    weights.write_bytes(b"test")
     work_dir = tmp_path / "work"
     args = argparse.Namespace(
+        initial_weights=weights,
         dataset_root=manifest.parent,
         mapping_acceptance=tmp_path / "fabricated.json",
         work_dir=work_dir,
@@ -83,6 +88,7 @@ def test_run_all_rejects_acceptance_before_preflight_or_work_creation(
     def reject_preflight() -> None:
         raise AssertionError("preflight must not run")
 
+    monkeypatch.setattr(cli, "_sha256", lambda _: BASE_WEIGHTS_SHA256)
     monkeypatch.setattr(
         cli,
         "validate_prepared_dataset",

@@ -27,7 +27,6 @@ _REQUIRED_INPUTS = {
     "records/training-profile.json",
     "records/preflight.json",
     "records/environment.json",
-    "records/anchors.json",
 }
 _GENERATED = {"registry-entry.json", "checksums.sha256", "bundle-manifest.json"}
 _MAX_ENTRIES = 20
@@ -262,7 +261,6 @@ def build_return_bundle(
     version: str,
     input_size: int,
     toolchain: str,
-    anchors: list[list[float]],
 ) -> Path:
     """Build, verify, and no-clobber publish a deterministic private transfer archive."""
     if destination.exists():
@@ -277,8 +275,6 @@ def build_return_bundle(
         raise BundleError("model_id, version, and toolchain must be non-empty")
     if input_size < 32 or input_size % 32:
         raise BundleError("input_size must be positive and divisible by 32")
-    if not anchors or any(len(pair) != 2 for pair in anchors):
-        raise BundleError("anchors must be a non-empty list of (width, height) pairs")
 
     total_input_size = _validate_source_inputs(files)
 
@@ -300,8 +296,7 @@ def build_return_bundle(
         "input_size": input_size,
         "class_names": {"0": "dark_gill", "1": "white_spot"},
         "opset": 17,
-        "output_layout": "custom_yolo_anchor_v1",
-        "anchors": [[float(w), float(h)] for w, h in anchors],
+        "output_layout": "ultralytics_v8_detect_v1",
         "dataset_mapping_status": mapping_status,
         "artifact_license": "AGPL-3.0-or-later",
         "training_toolchain": toolchain.strip(),

@@ -259,3 +259,27 @@ def validate_prepared_dataset(root: Path) -> PreparedDataset:
         split_counts=observed_counts,
         class_names=class_names,
     )
+
+
+def write_ultralytics_dataset(dataset: PreparedDataset, destination: Path) -> Path:
+    """Write the private Ultralytics data descriptor without overwriting evidence."""
+    rendered = (
+        f"path: {json.dumps(dataset.root.as_posix())}\n"
+        "train: images/train\n"
+        "val: images/validation\n"
+        "test: images/test\n"
+        "names:\n"
+        "  0: dark_gill\n"
+        "  1: white_spot\n"
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with destination.open("x", encoding="utf-8", newline="\n") as handle:
+            handle.write(rendered)
+    except FileExistsError:
+        raise
+    except OSError as exc:
+        raise DatasetContractError(
+            f"cannot write Ultralytics dataset descriptor: {destination}"
+        ) from exc
+    return destination

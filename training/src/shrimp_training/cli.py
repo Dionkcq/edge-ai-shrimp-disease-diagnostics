@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Any
 
 from shrimp_training.acceptance import validate_mapping_acceptance
-from shrimp_training.anchors import anchor_set_to_document, compute_anchors
 from shrimp_training.artifacts import (
     compare_parity,
     evaluate_artifact,
@@ -28,11 +27,12 @@ from shrimp_training.bundle import (
     verify_return_bundle,
 )
 from shrimp_training.config import load_profile
-from shrimp_training.dataset import validate_prepared_dataset
+from shrimp_training.dataset import validate_prepared_dataset, write_ultralytics_dataset
 from shrimp_training.preflight import run_preflight
 from shrimp_training.runner import train_with_fallback
 
-_TOOLCHAIN_PACKAGES = ("torch", "torchvision", "onnx", "onnxruntime", "numpy")
+BASE_WEIGHTS_SHA256 = "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1"
+_TOOLCHAIN_PACKAGES = ("ultralytics", "torch", "torchvision", "onnx", "onnxruntime", "numpy")
 
 
 def _sha256(path: Path) -> str:
@@ -52,6 +52,7 @@ def _write_json(path: Path, document: dict[str, Any]) -> Path:
 
 
 def _environment_record(
+    base_weights: Path,
     prepared_manifest_sha256: str,
     dataset_inventory_sha256: str,
     training_lock: Path,
@@ -62,6 +63,10 @@ def _environment_record(
         "python": platform.python_version(),
         "platform": platform.platform(),
         "packages": packages,
+        "base_weights": {
+            "filename": base_weights.name,
+            "sha256": _sha256(base_weights),
+        },
         "training_lock_sha256": _sha256(training_lock),
         "prepared_manifest_sha256": prepared_manifest_sha256,
         "dataset_inventory_sha256": dataset_inventory_sha256,
@@ -76,6 +81,10 @@ def _run_preflight_command(args: argparse.Namespace) -> int:
 
 
 def _run_all(args: argparse.Namespace) -> int:
+    if _sha256(args.initial_weights) != BASE_WEIGHTS_SHA256:
+        raise RuntimeError(
+            "initial yolo11n.pt SHA-256 does not match the pinned v8.4.0 base artifact"
+        )
     prepared = validate_prepared_dataset(args.dataset_root)
     acceptance = validate_mapping_acceptance(args.mapping_acceptance, prepared.manifest)
     args.work_dir.mkdir(parents=True, exist_ok=False)
@@ -85,20 +94,19 @@ def _run_all(args: argparse.Namespace) -> int:
         {"schema_version": "1.0.0", **asdict(run_preflight())},
     )
     profile = load_profile(args.profile)
-    anchor_set = compute_anchors(prepared, seed=profile.seed)
-    anchors_path = _write_json(records / "anchors.json", anchor_set_to_document(anchor_set))
+    dataset_yaml = write_ultralytics_dataset(prepared, args.work_dir / "dataset.yaml")
     training = train_with_fallback(
         profile,
-        prepared.root,
+        args.initial_weights,
+        dataset_yaml,
         args.work_dir / "runs",
-        anchors=anchor_set,
     )
     pytorch_evaluation = records / "evaluation-pytorch.json"
     evaluate_artifact(
         training.best_checkpoint,
+        dataset_yaml,
         profile,
         pytorch_evaluation,
-        anchors=anchor_set,
         prepared_root=prepared.root,
     )
     model_onnx = export_static_onnx(
@@ -110,9 +118,9 @@ def _run_all(args: argparse.Namespace) -> int:
     onnx_evaluation = records / "evaluation-onnx.json"
     evaluate_artifact(
         model_onnx,
+        dataset_yaml,
         profile,
         onnx_evaluation,
-        anchors=anchor_set,
         prepared_root=prepared.root,
     )
     parity = records / "parity.json"
@@ -125,12 +133,16 @@ def _run_all(args: argparse.Namespace) -> int:
     environment = _write_json(
         records / "environment.json",
         _environment_record(
+            args.initial_weights,
             prepared.manifest_sha256,
             prepared.inventory_sha256,
             Path(__file__).resolve().parents[2] / "uv.lock",
         ),
     )
-    toolchain = f"custom-pytorch-yolo torch {importlib.metadata.version('torch')}"
+    toolchain = (
+        f"ultralytics {importlib.metadata.version('ultralytics')} / "
+        f"torch {importlib.metadata.version('torch')}"
+    )
     bundle = build_return_bundle(
         args.bundle,
         {
@@ -144,13 +156,11 @@ def _run_all(args: argparse.Namespace) -> int:
             "records/training-profile.json": args.profile,
             "records/preflight.json": preflight_path,
             "records/environment.json": environment,
-            "records/anchors.json": anchors_path,
         },
         model_id=args.model_id,
         version=args.version,
         input_size=profile.image_size,
         toolchain=toolchain,
-        anchors=[list(pair) for pair in anchor_set.boxes],
     )
     manifest_digest = bundle_manifest_sha256(bundle)
     verify_return_bundle(bundle, expected_manifest_sha256=manifest_digest)
@@ -188,10 +198,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_all = commands.add_parser("run-all", help="train, evaluate, export, and bundle")
     run_all.add_argument("--dataset-root", type=Path, required=True)
     run_all.add_argument("--mapping-acceptance", type=Path, required=True)
+    run_all.add_argument("--initial-weights", type=Path, required=True)
     run_all.add_argument("--profile", type=Path, required=True)
     run_all.add_argument("--work-dir", type=Path, required=True)
     run_all.add_argument("--bundle", type=Path, required=True)
-    run_all.add_argument("--model-id", default="shrimp-marker-custom-yolo")
+    run_all.add_argument("--model-id", default="shrimp-marker-yolo11n")
     run_all.add_argument("--version", required=True)
     run_all.add_argument("--parity-tolerance", type=float, default=0.01)
     run_all.set_defaults(handler=_run_all)

@@ -17,8 +17,6 @@ from shrimp_training.bundle import (
     verify_return_bundle,
 )
 
-ANCHOR_BOXES: list[list[float]] = [[10.0 * (i + 1), 10.0 * (i + 1)] for i in range(9)]
-
 
 def _json(document: dict[str, Any]) -> bytes:
     return (json.dumps(document, indent=2, sort_keys=True) + "\n").encode()
@@ -128,16 +126,6 @@ def _payloads(
                 "dataset_inventory_sha256": inventory_digest,
             }
         ),
-        "records/anchors.json": _json(
-            {
-                "schema_version": "1.0.0",
-                "strides": [8, 16, 32],
-                "anchors_per_scale": 3,
-                "boxes": ANCHOR_BOXES,
-                "seed": 20260730,
-                "source_box_count": 100,
-            }
-        ),
     }
 
 
@@ -156,11 +144,10 @@ def _build(destination: Path, inputs: dict[str, Path]) -> Path:
     return build_return_bundle(
         destination,
         inputs,
-        model_id="shrimp-marker-custom-yolo",
+        model_id="shrimp-marker-yolo11n",
         version="1.0.0",
         input_size=640,
-        toolchain="custom-pytorch-yolo torch 2.5.1+cu118",
-        anchors=ANCHOR_BOXES,
+        toolchain="ultralytics 8.4.112 / torch 2.5.1+cu118",
     )
 
 
@@ -210,11 +197,10 @@ def test_generated_registry_entry_loads_in_the_runtime_parser(tmp_path: Path) ->
     registry_path = tmp_path / "registry.json"
     registry_path.write_text(json.dumps({"models": [registry_entry]}), encoding="utf-8")
 
-    loaded = registry_module.load_registry(registry_path).by_model_id("shrimp-marker-custom-yolo")
+    loaded = registry_module.load_registry(registry_path).by_model_id("shrimp-marker-yolo11n")
 
     assert loaded.filename == "model.onnx"
-    assert loaded.output_layout.value == "custom_yolo_anchor_v1"
-    assert len(loaded.anchors) == 9
+    assert loaded.output_layout.value == "ultralytics_v8_detect_v1"
 
 
 def test_build_rejects_fabricated_acceptance_and_wrong_onnx_evaluation(tmp_path: Path) -> None:

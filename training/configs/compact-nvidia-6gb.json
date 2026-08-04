@@ -10,7 +10,5 @@
   "amp": true,
   "deterministic": true,
   "seed": 20260730,
-  "cache": false,
-  "learning_rate": 0.01,
-  "weight_decay": 0.0005
+  "cache": false
 }

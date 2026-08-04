@@ -1,21 +1,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""From-scratch-model training boundary with deterministic CUDA OOM fallback.
-
-Training starts from a fresh, seeded random init -- ``model.YOLO`` has no
-pretrained-weights loading path, so there is no external checkpoint to pin or
-verify here (contrast with the pinned Ultralytics base checkpoint this module used
-to require).
-"""
+"""Ultralytics training boundary with deterministic CUDA OOM fallback."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
 from typing import Any, Protocol, cast
 
-from shrimp_training.adapter import CustomYoloModel
-from shrimp_training.anchors import AnchorSet
 from shrimp_training.config import TrainingProfile
 
 
@@ -31,7 +24,7 @@ class TrainableModel(Protocol):
     def train(self, **kwargs: Any) -> TrainResult: ...
 
 
-ModelFactory = Callable[[], TrainableModel]
+ModelFactory = Callable[[Path], TrainableModel]
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,8 +34,12 @@ class TrainingResult:
     batch_size: int
 
 
-def _default_factory() -> TrainableModel:
-    return cast(TrainableModel, CustomYoloModel())
+def _default_factory(weights: Path) -> TrainableModel:
+    module = import_module("ultralytics")
+    constructor = getattr(module, "YOLO", None)
+    if constructor is None:
+        raise TrainingError("the installed ultralytics package exposes no YOLO constructor")
+    return cast(TrainableModel, constructor(str(weights)))
 
 
 def _is_cuda_oom(exc: RuntimeError) -> bool:
@@ -52,23 +49,25 @@ def _is_cuda_oom(exc: RuntimeError) -> bool:
 
 def train_with_fallback(
     profile: TrainingProfile,
-    dataset_root: Path,
+    initial_weights: Path,
+    dataset_yaml: Path,
     output: Path,
     *,
-    anchors: AnchorSet,
     model_factory: ModelFactory = _default_factory,
 ) -> TrainingResult:
-    """Train from a fresh random init, reducing batch size only after a CUDA OOM."""
-    if not dataset_root.is_dir():
-        raise TrainingError(f"prepared dataset root does not exist: {dataset_root}")
+    """Train from clean weights, reducing batch size only after a CUDA OOM."""
+    if not initial_weights.is_file():
+        raise TrainingError(f"initial weights do not exist: {initial_weights}")
+    if not dataset_yaml.is_file():
+        raise TrainingError(f"dataset descriptor does not exist: {dataset_yaml}")
     output.mkdir(parents=True, exist_ok=True)
     last_oom: RuntimeError | None = None
     for batch_size in profile.batch_fallback:
         name = f"{profile.profile_name}-batch-{batch_size}"
-        model = model_factory()
+        model = model_factory(initial_weights)
         try:
             result = model.train(
-                data=str(dataset_root),
+                data=str(dataset_yaml),
                 imgsz=profile.image_size,
                 epochs=profile.epochs,
                 patience=profile.patience,
@@ -79,11 +78,13 @@ def train_with_fallback(
                 deterministic=profile.deterministic,
                 seed=profile.seed,
                 cache=profile.cache,
-                learning_rate=profile.learning_rate,
-                weight_decay=profile.weight_decay,
-                anchors=anchors,
                 project=str(output),
                 name=name,
+                exist_ok=False,
+                pretrained=True,
+                val=True,
+                plots=True,
+                close_mosaic=10,
             )
         except RuntimeError as exc:
             if not _is_cuda_oom(exc):
