@@ -18,8 +18,8 @@ The PyTorch wheel contains the CUDA runtime. A separate CUDA Toolkit installatio
 
 ```powershell
 uv python install 3.11
-uv sync --project training --group test --frozen
-uv run --project training pytest training/tests -q
+uv sync --project model/training --group test --frozen
+uv run --project model/training pytest model/training/tests -q
 ```
 
 ## Pinned base artifact
@@ -45,7 +45,7 @@ Required SHA-256:
 ## Preflight
 
 ```powershell
-uv run --project training shrimp-train preflight `
+uv run --project model/training shrimp-train preflight `
   --output private/preflight.json
 ```
 
@@ -58,11 +58,11 @@ First prepare the dataset with `shrimp-pipeline prepare`; that command remains f
 Then run:
 
 ```powershell
-uv run --project training shrimp-train run-all `
+uv run --project model/training shrimp-train run-all `
   --dataset-root private/prepared `
   --mapping-acceptance private/mapping-acceptance.json `
   --initial-weights private/yolo11n.pt `
-  --profile training/configs/compact-nvidia-6gb.json `
+  --profile model/training/configs/compact-nvidia-6gb.json `
   --work-dir private/run-v1 `
   --bundle private/shrimp-model-v1.zip `
   --version 1.0.0
@@ -90,7 +90,7 @@ Only the validated ONNX artifact crosses that boundary.
 ZIP transfer. Verify a transferred bundle without extracting it:
 
 ```powershell
-uv run --project training shrimp-train verify-bundle `
+uv run --project model/training shrimp-train verify-bundle `
   private/shrimp-model-v1.zip `
   --expected-manifest-sha256 <separately-recorded-64-hex-digest>
 ```

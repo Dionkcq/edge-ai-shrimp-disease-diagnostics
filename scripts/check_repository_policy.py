@@ -42,11 +42,11 @@ REQUIRED_FILES: tuple[str, ...] = (
     "docs/KNOWN_GAPS.md",
     "models/MODEL_CARD.md",
     "models/registry.json",
-    "training/README.md",
-    "training/LICENSE.AGPL",
-    "training/pyproject.toml",
-    "training/uv.lock",
-    "training/configs/compact-nvidia-6gb.json",
+    "model/training/README.md",
+    "model/training/LICENSE.AGPL",
+    "model/training/pyproject.toml",
+    "model/training/uv.lock",
+    "model/training/configs/compact-nvidia-6gb.json",
     "contracts/screening_result.schema.json",
     "contracts/CONTRACT.md",
     "policy/quality_policy_v1.json",
@@ -64,7 +64,7 @@ REQUIRED_JSON: tuple[str, ...] = (
     "guidance/guidance_v1.json",
     "contracts/screening_result.schema.json",
     "datasets/mapping_acceptance.example.json",
-    "training/configs/compact-nvidia-6gb.json",
+    "model/training/configs/compact-nvidia-6gb.json",
 )
 
 #: Path prefixes that must never be tracked.
@@ -74,9 +74,9 @@ FORBIDDEN_PREFIXES: tuple[str, ...] = (
     "artifacts/",
     "runs/",
     "private/",
-    "training/runs/",
-    "training/returns/",
-    "training/work/",
+    "model/training/runs/",
+    "model/training/returns/",
+    "model/training/work/",
 )
 
 #: Model weights and other binary artifacts. `.onnx` is included deliberately: the

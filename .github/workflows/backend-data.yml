@@ -4,8 +4,8 @@ on:
   pull_request:
     paths:
       - "backend/**"
-      - "pipeline/**"
-      - "training/**"
+      - "model/pipeline/**"
+      - "model/training/**"
       - "policy/**"
       - "guidance/**"
       - "models/**"
@@ -40,7 +40,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: |
             uv.lock
-            training/uv.lock
+            model/training/uv.lock
 
       - name: Install locked Python workspace
         run: |
@@ -50,14 +50,14 @@ jobs:
 
       - name: Ruff
         run: |
-          uv run ruff check backend pipeline training scripts
-          uv run ruff format --check backend pipeline training scripts
+          uv run ruff check backend model/pipeline model/training scripts
+          uv run ruff format --check backend model/pipeline model/training scripts
 
       - name: Strict mypy
         run: uv run mypy
 
-      - name: Standalone training lock is current
-        run: uv lock --project training --check
+      - name: Standalone model/training lock is current
+        run: uv lock --project model/training --check
 
       - name: Full branch-coverage suite
         run: >-
@@ -76,7 +76,7 @@ jobs:
       - name: Tracked-file policy
         run: uv run python scripts/check_repository_policy.py
 
-  training-cli-windows:
+  model-training-cli-windows:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -87,17 +87,17 @@ jobs:
         uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
         with:
           enable-cache: true
-          cache-dependency-glob: training/uv.lock
+          cache-dependency-glob: model/training/uv.lock
 
       - name: Install lightweight Python 3.11 test environment
         shell: pwsh
         run: |
           uv python install 3.11
-          uv venv training/.venv-ci --python 3.11
-          uv pip install --python training/.venv-ci/Scripts/python.exe "pytest>=8.4,<10" "numpy==2.2.6"
+          uv venv model/training/.venv-ci --python 3.11
+          uv pip install --python model/training/.venv-ci/Scripts/python.exe "pytest>=8.4,<10" "numpy==2.2.6"
 
-      - name: Run training orchestration tests on Windows
+      - name: Run model/training orchestration tests on Windows
         shell: pwsh
         run: |
-          $env:PYTHONPATH = "training/src"
-          & training/.venv-ci/Scripts/python.exe -m pytest training/tests -q
+          $env:PYTHONPATH = "model/training/src"
+          & model/training/.venv-ci/Scripts/python.exe -m pytest model/training/tests -q

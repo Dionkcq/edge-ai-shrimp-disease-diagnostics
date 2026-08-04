@@ -22,7 +22,7 @@ def test_run_all_parser_requires_explicit_private_inputs_and_version() -> None:
             "--initial-weights",
             "private/yolo11n.pt",
             "--profile",
-            "training/configs/compact-nvidia-6gb.json",
+            "model/training/configs/compact-nvidia-6gb.json",
             "--work-dir",
             "private/run-v1",
             "--bundle",

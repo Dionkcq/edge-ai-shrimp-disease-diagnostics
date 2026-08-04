@@ -37,8 +37,8 @@ from shrimp_screening.detection.protocol import Detection
 MAX_NMS_CANDIDATES = 30_000
 
 #: Strides and anchors-per-scale for CUSTOM_YOLO_ANCHOR_V1. Mirrors
-#: ``training/src/shrimp_training/model.py::STRIDES`` and
-#: ``training/src/shrimp_training/anchors.py::ANCHORS_PER_SCALE`` -- kept as plain
+#: ``model/training/src/shrimp_training/model.py::STRIDES`` and
+#: ``model/training/src/shrimp_training/anchors.py::ANCHORS_PER_SCALE`` -- kept as plain
 #: constants rather than imported, since the backend never imports the
 #: (AGPL, separately locked) training package.
 CUSTOM_YOLO_STRIDES: tuple[int, ...] = (8, 16, 32)

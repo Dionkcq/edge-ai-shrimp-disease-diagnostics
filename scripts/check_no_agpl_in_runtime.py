@@ -3,7 +3,7 @@
 
 The repository root is MIT. Ultralytics -- the intended training and export
 toolchain -- is AGPL-3.0. Those two facts cannot both hold for a file that imports
-ultralytics, so `pipeline/` is quarantined and the served application must never
+ultralytics, so `model/pipeline/` is quarantined and the served application must never
 reach it. This script is the enforcement; `LICENSING.md` is the explanation.
 
 Four independent checks, because each catches something the others cannot:

@@ -24,8 +24,14 @@ from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
-from shrimp_screening.api import routes_advice, routes_chat, routes_guidance, routes_health, routes_screening
 from shrimp_screening.ai.memory import ConversationMemory
+from shrimp_screening.api import (
+    routes_advice,
+    routes_chat,
+    routes_guidance,
+    routes_health,
+    routes_screening,
+)
 from shrimp_screening.api.dependencies import RESOURCES_ATTRIBUTE, AppResources
 from shrimp_screening.api.errors import (
     ApiProblemError,

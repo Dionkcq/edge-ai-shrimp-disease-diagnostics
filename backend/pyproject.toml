@@ -3,7 +3,7 @@
 # Runtime package. Nothing here may depend, directly or transitively, on an
 # AGPL-licensed distribution -- `scripts/check_no_agpl_in_runtime.py` enforces it.
 # Notably absent and deliberately so: opencv (four numpy functions replace it),
-# torch and ultralytics (training-only, quarantined in pipeline/).
+# torch and ultralytics (training-only, quarantined in model/pipeline/).
 [project]
 name = "shrimp-screening"
 version = "0.1.0"

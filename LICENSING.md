@@ -16,13 +16,13 @@ explanation.
 |---|---|---|
 | `backend/` | MIT | The served runtime. Must never resolve or import an AGPL distribution. |
 | `contracts/`, `policy/`, `guidance/`, `docs/`, `scripts/` | MIT | Text, JSON and tooling with no AGPL dependency. |
-| `pipeline/` | **AGPL-3.0-or-later** | Development-time data and training tooling. Never imported by `backend/`. |
-| `training/` | **AGPL-3.0-or-later** | Separately locked Python 3.11 Ultralytics training/export tooling. Excluded from the runtime workspace. |
+| `model/pipeline/` | **AGPL-3.0-or-later** | Development-time data and training tooling. Never imported by `backend/`. |
+| `model/training/` | **AGPL-3.0-or-later** | Separately locked Python 3.11 Ultralytics model/training/export tooling. Excluded from the runtime workspace. |
 | `datasets/` (contents) | see `datasets/DATASET_REGISTRY.md` | Source archives are third-party CC BY 4.0. Not redistributed here. |
 | Model weights (`models/*.onnx`, `*.pt`) | **AGPL-3.0-or-later if produced by Ultralytics** | None exist in this repository. See below. |
 
-The root `LICENSE` (MIT) is scoped to the MIT trees above. `pipeline/LICENSE.AGPL`
-and `training/LICENSE.AGPL` carry the AGPL text for those trees.
+The root `LICENSE` (MIT) is scoped to the MIT trees above. `model/pipeline/LICENSE.AGPL`
+and `model/training/LICENSE.AGPL` carry the AGPL text for those trees.
 
 ---
 
@@ -33,11 +33,11 @@ modified version* of the AGPL program so that users interact with it remotely. W
 do not modify Ultralytics, and the served application never imports it. The
 screening service could be exposed on a network without §13 attaching.
 
-**AGPL §5, combined works, is the real exposure.** `pipeline/` imports Ultralytics.
+**AGPL §5, combined works, is the real exposure.** `model/pipeline/` imports Ultralytics.
 Conveyed together with the rest of the repository, that is arguably a combined
 work. The mitigation is separation, not a claim that the problem does not exist:
 
-- `pipeline/` is its own distribution package with its own licence file;
+- `model/pipeline/` is its own distribution package with its own licence file;
 - every module that imports Ultralytics carries
   `SPDX-License-Identifier: AGPL-3.0-or-later`;
 - `backend/` declares no dependency on it and cannot import it;
@@ -45,7 +45,7 @@ work. The mitigation is separation, not a claim that the problem does not exist:
 
 **Ultralytics is not declared anywhere in the runtime workspace lockfile.** The
 root `uv.lock` remains free of Ultralytics, Torch and OpenCV. The excluded
-`training/` project has its own Python 3.11 `pyproject.toml`, `uv.lock`, AGPL text,
+`model/training/` project has its own Python 3.11 `pyproject.toml`, `uv.lock`, AGPL text,
 CLI and tests. `shrimp-pipeline train` remains `UNAVAILABLE` so nobody accidentally
 installs training dependencies through the runtime workspace; the reviewed entry
 point is the separately installed `shrimp-train` command.
@@ -71,7 +71,7 @@ without the registry being updated.
 
 The backend depends on an **ONNX output contract**
 (`models/registry.json` → `output_layout`), not on Ultralytics. If the AGPL
-position becomes unacceptable, the replacement is a new trainer in `pipeline/` plus
+position becomes unacceptable, the replacement is a new trainer in `model/pipeline/` plus
 one registry field; the runtime does not change.
 
 The cost is real and should not be glossed over: the obvious BSD-3 alternative

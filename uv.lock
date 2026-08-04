@@ -16,7 +16,7 @@ dev = [
     { name = "pytest", specifier = ">=8.4" },
     { name = "pytest-cov", specifier = ">=6.0" },
     { name = "ruff", specifier = ">=0.14,<0.17" },
-    { name = "shrimp-pipeline", editable = "pipeline" },
+    { name = "shrimp-pipeline", editable = "model/pipeline" },
     { name = "shrimp-screening", editable = "backend" },
 ]
 
@@ -536,7 +536,7 @@ wheels = [
 [[package]]
 name = "shrimp-pipeline"
 version = "0.1.0"
-source = { editable = "pipeline" }
+source = { editable = "model/pipeline" }
 dependencies = [
     { name = "numpy" },
     { name = "pillow" },

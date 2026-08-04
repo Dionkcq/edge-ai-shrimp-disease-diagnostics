@@ -38,9 +38,9 @@ datasets/processed/
 datasets/mapping_acceptance.json
 runs/
 artifacts/
-training/runs/
-training/returns/
-training/work/
+model/training/runs/
+model/training/returns/
+model/training/work/
 
 # Model weights are never committed, wherever they land. These patterns are deliberately
 # repository-wide rather than scoped to models/: the training toolchain downloads its own

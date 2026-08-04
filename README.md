@@ -47,7 +47,7 @@ The frontend and API share one origin. Runtime assets, policies, guidance and mo
 | Responsive React interface | Implemented and tested on desktop/mobile Chromium |
 | Same-origin production serving | Implemented and integration-tested |
 | LikeC4 architecture site | Deployed and verified on GitHub Pages |
-| Isolated training/export workflow | Implemented and orchestration-tested; no real run completed |
+| Isolated model/training/export workflow | Implemented and orchestration-tested; no real run completed |
 | Trained or validated model weights | Not included |
 | Accuracy, calibration, latency and parity measurements | Not available |
 | Guidance review | Literature-reviewed; not expert-reviewed |
@@ -59,8 +59,8 @@ See [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md) and [`docs/LIMITATIONS.md`](docs/
 ```text
 backend/       FastAPI service, contracts, intake, policies and inference providers
 frontend/      React/Vite interface, unit tests and Playwright tests
-pipeline/      AGPL dataset audit, evidence and preparation tooling
-training/      Separately locked Python 3.11 AGPL training/export tooling
+model/pipeline/      AGPL dataset audit, evidence and preparation tooling
+model/training/      Separately locked Python 3.11 AGPL model/training/export tooling
 contracts/     Generated JSON schemas shared across boundaries
 policy/        Versioned quality and decision policies
 guidance/      Cited, non-generative educational guidance
@@ -205,7 +205,7 @@ Python 3.11 AGPL project. It validates the prepared dataset, trains with a gener
 static ONNX graph, checks PyTorch/ONNX parity, and creates a checksummed private
 return bundle. No weights or generated training records are committed.
 
-See [`training/README.md`](training/README.md) for the generic reproducible workflow.
+See [`model/training/README.md`](model/training/README.md) for the generic reproducible workflow.
 
 ## Architecture documentation
 
@@ -234,6 +234,6 @@ Development and review conventions are in [`CONTRIBUTING.md`](CONTRIBUTING.md). 
 
 ## Licensing
 
-This repository is **not uniformly MIT-licensed**. Runtime/backend/frontend and original documentation use the licenses declared for their trees; `pipeline/` is AGPL-3.0-or-later because it is the training/data-tooling boundary. Datasets and publications retain their own licenses and attribution requirements.
+This repository is **not uniformly MIT-licensed**. Runtime/backend/frontend and original documentation use the licenses declared for their trees; `model/pipeline/` is AGPL-3.0-or-later because it is the model/training/data-tooling boundary. Datasets and publications retain their own licenses and attribution requirements.
 
 Read [`LICENSING.md`](LICENSING.md) for the authoritative per-tree map and dependency boundary.

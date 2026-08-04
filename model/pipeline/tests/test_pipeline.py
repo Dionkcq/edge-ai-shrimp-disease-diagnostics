@@ -28,7 +28,7 @@ def test_mapping_gate_refuses_unreadable_json(tmp_path: Path) -> None:
 
 
 def test_the_repository_ships_no_signed_acceptance_file() -> None:
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[3]
     assert not (root / "datasets" / "mapping_acceptance.json").exists(), (
         "datasets/mapping_acceptance.json must not exist in the repository: signing it "
         "is a reviewer's decision, not a checked-in default"

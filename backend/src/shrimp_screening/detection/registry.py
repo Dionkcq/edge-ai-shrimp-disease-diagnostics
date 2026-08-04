@@ -46,7 +46,7 @@ _TOOLCHAIN_LICENSES = {
     "custom-pytorch-yolo": {"AGPL-3.0-or-later", "UNDECLARED"},
 }
 #: Anchors per detection scale for CUSTOM_YOLO_ANCHOR_V1 (3 scales x 3 anchors).
-#: Mirrors ``training/src/shrimp_training/anchors.py::ANCHORS_PER_SCALE`` -- kept
+#: Mirrors ``model/training/src/shrimp_training/anchors.py::ANCHORS_PER_SCALE`` -- kept
 #: as a plain constant here rather than imported, since the backend never imports
 #: the (AGPL, separately locked) training package.
 _ANCHORS_PER_SCALE = 3

@@ -60,8 +60,8 @@ def test_the_forbidden_lists_still_name_the_things_that_matter() -> None:
 
 
 def test_the_pipeline_tree_carries_its_own_agpl_licence() -> None:
-    licence = REPO_ROOT / "pipeline" / "LICENSE.AGPL"
-    assert licence.is_file(), "pipeline/ is AGPL and must carry the licence text"
+    licence = REPO_ROOT / "model" / "pipeline" / "LICENSE.AGPL"
+    assert licence.is_file(), "model/pipeline/ is AGPL and must carry the licence text"
     text = licence.read_text(encoding="utf-8")
     assert "GNU AFFERO GENERAL PUBLIC LICENSE" in text
     # Section 13 is what distinguishes the AGPL from the GPL; a GPL text pasted here
@@ -72,7 +72,7 @@ def test_the_pipeline_tree_carries_its_own_agpl_licence() -> None:
 def test_the_pipeline_package_does_not_import_the_backend() -> None:
     """The boundary runs both ways: the trainer must not depend on the service."""
     offenders: list[str] = []
-    for path in sorted((REPO_ROOT / "pipeline" / "src").rglob("*.py")):
+    for path in sorted((REPO_ROOT / "model" / "pipeline" / "src").rglob("*.py")):
         source = path.read_text(encoding="utf-8")
         if "shrimp_screening" in source:
             offenders.append(str(path.relative_to(REPO_ROOT)))
@@ -81,5 +81,5 @@ def test_the_pipeline_package_does_not_import_the_backend() -> None:
 
 def test_licensing_md_documents_the_boundary() -> None:
     text = (REPO_ROOT / "LICENSING.md").read_text(encoding="utf-8")
-    for expected in ("AGPL-3.0-or-later", "pipeline/", "backend/", "CC BY 4.0"):
+    for expected in ("AGPL-3.0-or-later", "model/pipeline/", "backend/", "CC BY 4.0"):
         assert expected in text, f"LICENSING.md must explain {expected}"
