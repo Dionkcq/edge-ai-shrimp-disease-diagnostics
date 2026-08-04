@@ -1,23 +1,31 @@
 # Local model folder
 
-Put one official validated model bundle (`.zip`) in this folder, then run the
-repository launcher from the project root:
+Put one ONNX model in this folder, then run the repository launcher from the
+project root:
 
 ```bash
 python run.py
 ```
 
-The launcher extracts the bundle into ignored `.runtime/` state, verifies the
-model SHA-256 and registry metadata, builds the frontend when necessary, and
-starts the API and browser UI together. Do not edit `.env` or
-`models/registry.json` for an official bundle.
-
-The bundle must contain:
+The simplest supported layout is:
 
 ```text
-model/model.onnx
-registry-entry.json
+model/
+└── model.onnx
 ```
 
-Raw `.onnx` files are accepted only when accompanied by `model-manifest.json`.
+The launcher reads the ONNX graph and embedded metadata, calculates its SHA-256,
+and generates ignored runtime registry state. It supports standard YOLO detect
+exports when the file includes class names, task, license and compatible graph
+metadata. It refuses unsupported or incomplete models rather than guessing how
+to decode their outputs.
+
+Official bundles with an explicit registry entry remain supported:
+
+```text
+model/model-bundle.zip
+├── model/model.onnx
+└── registry-entry.json
+```
+
 Model weights and bundles are ignored by Git and must never be committed.

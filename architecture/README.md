@@ -39,9 +39,9 @@ command:
 python run.py
 ```
 
-The launcher discovers an out-of-band model bundle, validates its hash and
-contract, generates ignored runtime registry state, builds the frontend and
-starts the same-origin API/UI process. The diagram's model artifact remains
+The launcher discovers an out-of-band ONNX model or model bundle, validates its
+hash and contract, generates ignored runtime registry state, builds the frontend
+and starts the same-origin API/UI process. The diagram's model artifact remains
 optional and the clean checkout still abstains safely.
 
 For the interactive architecture site:

@@ -126,9 +126,14 @@ def _install_zip_bundle(bundle: Path, runtime_dir: Path) -> tuple[Path, Path]:
     return model_path, registry_path
 
 
-def prepare_runtime(root: Path, model_dir: Path, runtime_dir: Path) -> RuntimeConfig:
+def prepare_runtime(
+    root: Path,
+    model_dir: Path,
+    runtime_dir: Path,
+    *,
+    env: dict[str, str] | None = None,
+) -> RuntimeConfig:
     """Discover a model or prepare the safe no-model runtime without editing .env."""
-    del root  # Reserved for future launcher diagnostics; paths are already resolved by the caller.
     if not model_dir.is_dir():
         return RuntimeConfig("unavailable", None, None)
 
@@ -146,12 +151,15 @@ def prepare_runtime(root: Path, model_dir: Path, runtime_dir: Path) -> RuntimeCo
     if len(models) != 1:
         raise LauncherError("Put exactly one ONNX file in the model folder.")
     manifest_path = model_dir / "model-manifest.json"
-    if not manifest_path.is_file():
+    if manifest_path.is_file():
+        raw_entry = _load_object(manifest_path, "model manifest")
+    elif env is not None:
+        raw_entry = _extract_manifest(root, models[0], env)
+    else:
         raise LauncherError(
-            "An ONNX file was found, but model-manifest.json is missing. "
-            "Use the official model ZIP so class names and anchors are validated automatically."
+            "An ONNX file was found, but automatic metadata extraction was not requested."
         )
-    entry = _normalise_entry(_load_object(manifest_path, "model manifest"), models[0])
+    entry = _normalise_entry(raw_entry, models[0])
     registry_path = runtime_dir / "registry.json"
     _write_registry(registry_path, entry)
     return RuntimeConfig("onnx", models[0], registry_path)
@@ -172,6 +180,45 @@ def _run(command: list[str], *, cwd: Path, env: dict[str, str]) -> None:
         ) from exc
 
 
+def _run_capture(command: list[str], *, cwd: Path, env: dict[str, str]) -> str:
+    print("+", " ".join(command), flush=True)
+    try:
+        completed = subprocess.run(  # noqa: S603
+            command,
+            cwd=cwd,
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:
+        raise LauncherError(
+            f"{command[0]!r} was not found. Install the prerequisites listed in README.md."
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or "").strip().splitlines()[-1:]
+        suffix = f" ({detail[0]})" if detail else ""
+        raise LauncherError(
+            f"Command failed with exit code {exc.returncode}: {command[0]}{suffix}"
+        ) from exc
+    return completed.stdout
+
+
+def _extract_manifest(root: Path, model_path: Path, env: dict[str, str]) -> dict[str, Any]:
+    output = _run_capture(
+        ["uv", "run", "python", "-m", "scripts.model_metadata", str(model_path)],
+        cwd=root,
+        env=env,
+    )
+    try:
+        value = json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise LauncherError("ONNX metadata extractor returned invalid JSON") from exc
+    if not isinstance(value, dict):
+        raise LauncherError("ONNX metadata extractor did not return a model entry")
+    return value
+
+
 def _ensure_frontend(root: Path, env: dict[str, str]) -> None:
     frontend = root / "frontend"
     if not (frontend / "node_modules").is_dir():
@@ -183,15 +230,15 @@ def _ensure_frontend(root: Path, env: dict[str, str]) -> None:
 def run_application(root: Path, *, host: str, port: int, rebuild: bool, open_browser: bool) -> int:
     runtime_dir = root / ".runtime"
     model_dir = root / "model"
-    config = prepare_runtime(root, model_dir, runtime_dir)
     env = os.environ.copy()
     env.update(
         {
             "SHRIMP_REPO_ROOT": str(root),
-            "SHRIMP_PROVIDER": config.provider,
             "SHRIMP_ENV": "dev",
         }
     )
+    config = prepare_runtime(root, model_dir, runtime_dir, env=env)
+    env["SHRIMP_PROVIDER"] = config.provider
     if config.model_path is not None and config.registry_path is not None:
         env["SHRIMP_ONNX_MODEL_PATH"] = str(config.model_path)
         env["SHRIMP_MODEL_REGISTRY_PATH"] = str(config.registry_path)

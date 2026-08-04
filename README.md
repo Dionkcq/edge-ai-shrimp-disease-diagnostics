@@ -95,11 +95,12 @@ On Windows, either `py run.py` or `python run.py` is supported. The launcher:
 
 1. installs the locked Python and frontend dependencies when they are missing;
 2. builds the frontend when `frontend/dist/index.html` is absent;
-3. searches `model/` for one official model ZIP;
-4. extracts and verifies the model SHA-256 and registry metadata automatically;
-5. generates ignored runtime state under `.runtime/`;
-6. starts FastAPI and serves the built React interface from the same origin;
-7. opens `http://127.0.0.1:8000` in a browser.
+3. searches `model/` for one ONNX model or official model ZIP;
+4. reads embedded ONNX metadata when no sidecar file is present;
+5. extracts and verifies the model SHA-256 and output contract automatically;
+6. generates ignored runtime state under `.runtime/`;
+7. starts FastAPI and serves the built React interface from the same origin;
+8. opens `http://127.0.0.1:8000` in a browser.
 
 A clean checkout has no model, so the launcher starts in the safe `unavailable`
 state. It displays the application, but screening returns `UNABLE_TO_ASSESS /
@@ -114,9 +115,10 @@ model/
 ```
 
 Do not edit `.env`, calculate a hash, or edit `models/registry.json` for an
-official bundle. The launcher performs those steps in `.runtime/`, which is
-ignored by Git. A raw ONNX file is accepted only with a matching
-`model-manifest.json`; the launcher refuses ambiguous or incomplete artifacts.
+ONNX file that contains the required metadata. The launcher performs those
+steps in `.runtime/`, which is ignored by Git. If the model has a custom
+anchor-based output, its anchors must be embedded in the ONNX metadata; models
+without a supported self-describing output contract are rejected.
 
 Useful options:
 

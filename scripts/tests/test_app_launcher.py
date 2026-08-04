@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import scripts.app_launcher as launcher
 from scripts.app_launcher import LauncherError, prepare_runtime
 
 
@@ -53,6 +54,21 @@ def test_raw_model_gets_hashed_and_registry_is_generated(tmp_path: Path) -> None
     registry = json.loads(config.registry_path.read_text(encoding="utf-8"))
     assert registry["models"][0]["filename"] == model_path.name
     assert len(registry["models"][0]["sha256"]) == 64
+
+
+def test_raw_model_without_sidecar_uses_automatic_metadata(monkeypatch, tmp_path: Path) -> None:
+    model_dir = tmp_path / "model"
+    model_dir.mkdir()
+    model_path = model_dir / "model.onnx"
+    model_path.write_bytes(b"test-onnx")
+    monkeypatch.setattr(
+        launcher, "_extract_manifest", lambda *_args: _manifest(filename="model.onnx")
+    )
+
+    config = prepare_runtime(tmp_path, model_dir, tmp_path / ".runtime", env={})
+
+    assert config.provider == "onnx"
+    assert config.registry_path is not None
 
 
 def test_official_zip_is_extracted_and_registered(tmp_path: Path) -> None:
